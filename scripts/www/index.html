@@ -1,0 +1,3679 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<title>AI 精讲 · 拍照解题</title>
+<style>
+  :root{
+    --bg:#0f1115; --bg2:#161a21; --bg3:#1d222b; --line:#2a313c;
+    --fg:#e8ecf2; --fg2:#9aa5b4; --fg3:#6b7684;
+    --acc:#4c8dff; --acc2:#3a6fd8; --ok:#2ecc8f; --warn:#f0a020; --err:#ff5c5c;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;height:100%}
+  body{
+    background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    font-size:15px; line-height:1.65; overflow-x:hidden;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:0 16px 110px}
+
+  /* ---------- 顶栏（可自动隐藏） ---------- */
+  header{
+    position:sticky;top:0;z-index:50;
+    background:rgba(15,17,21,.86);backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--line);
+    transition:transform .26s cubic-bezier(.22,1,.36,1);
+    will-change:transform;
+  }
+  header.hidden{transform:translateY(-100%)}
+  /* 顶栏隐藏时，钉顶栏顶上 */
+  body.hdr-hidden #pinnedQ.show{top:0}
+  #pinnedQ{transition:top .26s cubic-bezier(.22,1,.36,1)}
+  .hbar{max-width:920px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:10px}
+  .logo{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#4c8dff,#7b5cff);
+    display:flex;align-items:center;justify-content:center;font-size:16px;flex:none}
+  .htitle{font-weight:650;font-size:16px;letter-spacing:.2px}
+  .hsub{font-size:11.5px;color:var(--fg3);margin-top:-2px}
+  .hspace{flex:1}
+  .iconbtn{
+    width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--bg2);
+    color:var(--fg2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;
+    transition:.15s;flex:none;
+  }
+  .iconbtn:hover{background:var(--bg3);color:var(--fg);border-color:#3a4350}
+
+  /* 顶栏「重拍」按钮 —— 仅在讲解态出现 */
+  .btn-retake{
+    display:none;
+    align-items:center;gap:5px;
+    padding:7px 13px;border-radius:9px;
+    background:rgba(76,141,255,.13);
+    border:1px solid rgba(76,141,255,.42);
+    color:#a8c6ff;font-size:13px;font-weight:600;font-family:inherit;
+    cursor:pointer;transition:.15s;flex:none;white-space:nowrap;
+  }
+  .btn-retake:hover{background:rgba(76,141,255,.22);border-color:var(--acc);color:#cfe0ff}
+  .btn-retake:active{transform:scale(.96)}
+  body.explaining .btn-retake{display:inline-flex}
+
+  /* ---------- 通用 ---------- */
+  .card{background:var(--bg2);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-top:14px}
+  .card h3{margin:0 0 12px;font-size:14px;font-weight:650;color:var(--fg);display:flex;align-items:center;gap:8px}
+  .card h3 .dot{width:6px;height:6px;border-radius:50%;background:var(--acc);flex:none}
+  .hint{font-size:12px;color:var(--fg3);line-height:1.6}
+  label.fl{display:block;font-size:12px;color:var(--fg2);margin:10px 0 5px;font-weight:550}
+  input[type=text],input[type=password],input[type=number],select,textarea{
+    width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--line);border-radius:10px;
+    color:var(--fg);font-size:14px;font-family:inherit;outline:none;transition:.15s;
+  }
+  input:focus,select:focus,textarea:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(76,141,255,.13)}
+  textarea{resize:vertical;min-height:64px;line-height:1.6}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .row>*{flex:1;min-width:140px}
+
+  button.btn{
+    padding:10px 16px;border-radius:10px;border:1px solid var(--line);background:var(--bg3);color:var(--fg);
+    font-size:14px;font-weight:550;font-family:inherit;cursor:pointer;transition:.15s;
+    display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  }
+  button.btn:hover:not(:disabled){background:#252b35;border-color:#3a4350}
+  button.btn:disabled{opacity:.45;cursor:not-allowed}
+  button.btn.primary{background:var(--acc);border-color:var(--acc);color:#fff}
+  button.btn.primary:hover:not(:disabled){background:var(--acc2);border-color:var(--acc2)}
+  button.btn.ghost{background:transparent}
+  button.btn.sm{padding:7px 12px;font-size:13px}
+
+  /* ---------- 图片槽 ---------- */
+  .slots{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .slot{
+    position:relative;aspect-ratio:3/4;border:1.5px dashed var(--line);border-radius:12px;
+    background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:8px;cursor:pointer;overflow:hidden;transition:.18s;
+  }
+  .slot:hover{border-color:var(--acc);background:rgba(76,141,255,.05)}
+  .slot.filled{border-style:solid;border-color:var(--line);cursor:default}
+  .slot .ph{display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--fg3);font-size:12.5px;pointer-events:none}
+  .slot .ph .big{font-size:26px;opacity:.65}
+  .slot img{width:100%;height:100%;object-fit:contain;background:#000;display:block}
+  .slot .del{
+    position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;
+    background:rgba(0,0,0,.7);color:#fff;border:none;cursor:pointer;font-size:14px;line-height:1;
+    display:flex;align-items:center;justify-content:center;z-index:2;
+  }
+  .slot .tag{
+    position:absolute;left:6px;top:6px;background:rgba(0,0,0,.72);color:#fff;font-size:10.5px;
+    padding:2px 7px;border-radius:6px;z-index:2;letter-spacing:.3px;
+  }
+  .slot .acts{
+    position:absolute;left:0;right:0;bottom:0;display:flex;gap:1px;background:rgba(0,0,0,.66);
+    backdrop-filter:blur(6px);z-index:2;
+  }
+  .slot .acts button{
+    flex:1;padding:8px 2px;background:transparent;border:none;color:#fff;font-size:11.5px;
+    cursor:pointer;font-family:inherit;transition:.15s;
+  }
+  .slot .acts button:hover{background:rgba(255,255,255,.14)}
+
+  /* ---------- 状态 ---------- */
+  .status{margin-top:12px;padding:11px 13px;border-radius:10px;font-size:13px;display:none;line-height:1.6;word-break:break-word}
+  .status.show{display:block}
+  .status.info{background:rgba(76,141,255,.1);border:1px solid rgba(76,141,255,.3);color:#a8c6ff}
+  .status.err{background:rgba(255,92,92,.1);border:1px solid rgba(255,92,92,.32);color:#ffb0b0}
+  .status.ok{background:rgba(46,204,143,.1);border:1px solid rgba(46,204,143,.3);color:#8ee9c4}
+
+  /* ---------- 结果 / 板书 ---------- */
+  #result{margin-top:16px}
+  .board{
+    background:linear-gradient(180deg,#171c24,#141920);border:1px solid var(--line);
+    border-radius:var(--radius);padding:18px 18px 22px;position:relative;overflow:hidden;
+  }
+  .board::before{
+    content:'';position:absolute;inset:0;pointer-events:none;
+    background-image:linear-gradient(rgba(255,255,255,.016) 1px,transparent 1px);
+    background-size:100% 28px;
+  }
+  .step{
+    position:relative;padding:2px 0 2px 40px;margin-bottom:20px;
+    opacity:0;transform:translateY(9px);animation:rise .42s cubic-bezier(.22,1,.36,1) forwards;
+  }
+  @keyframes rise{to{opacity:1;transform:none}}
+  .step .no{
+    position:absolute;left:0;top:1px;width:27px;height:27px;border-radius:9px;
+    background:rgba(76,141,255,.14);border:1px solid rgba(76,141,255,.4);color:#8db6ff;
+    display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:650;
+  }
+  .step.pass .no{background:rgba(46,204,143,.13);border-color:rgba(46,204,143,.42);color:#6fd8ae}
+  .step.warn .no{background:rgba(240,160,32,.13);border-color:rgba(240,160,32,.42);color:#f2bd63}
+  .step h4{margin:0 0 7px;font-size:13.5px;font-weight:650;color:#cfe0ff;letter-spacing:.2px}
+  .step.pass h4{color:#a9e8cd}
+  .step.warn h4{color:#f5cf8e}
+  .step .body{font-size:14.5px;color:#dfe6f0;line-height:1.78}
+  .step .body p{margin:0 0 9px}
+  .step .body p:last-child{margin-bottom:0}
+  .step .body ul,.step .body ol{margin:6px 0 9px;padding-left:20px}
+  .step .body li{margin-bottom:5px}
+  .step .body strong{color:#fff;font-weight:650}
+  /* 重点高亮 —— 模拟“板书圈注” */
+  .mk{
+    background:linear-gradient(180deg,transparent 58%,rgba(240,160,32,.34) 58%);
+    padding:0 1px;border-radius:2px;color:#fff;font-weight:600;
+  }
+  .mk.blue{background:linear-gradient(180deg,transparent 58%,rgba(76,141,255,.36) 58%)}
+  .mk.green{background:linear-gradient(180deg,transparent 58%,rgba(46,204,143,.34) 58%)}
+  .step .body code{
+    background:rgba(255,255,255,.07);padding:1.5px 5px;border-radius:5px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;color:#9fd0ff;
+  }
+  .step .body pre{
+    background:rgba(0,0,0,.32);border:1px solid var(--line);border-radius:9px;
+    padding:11px 13px;overflow-x:auto;font-size:13px;line-height:1.6;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#c9d6e8;margin:9px 0;
+  }
+  .step .body table{border-collapse:collapse;width:100%;margin:9px 0;font-size:13.5px}
+  .step .body th,.step .body td{border:1px solid var(--line);padding:6px 9px;text-align:left}
+  .step .body th{background:rgba(255,255,255,.045);font-weight:600}
+  /* 测验题 */
+  .quiz{
+    background:rgba(76,141,255,.075);border:1px solid rgba(76,141,255,.28);
+    border-radius:10px;padding:12px 14px;margin:10px 0;
+  }
+  .quiz .qh{font-size:11.5px;color:#8db6ff;font-weight:650;margin-bottom:6px;letter-spacing:.4px}
+  .reveal{
+    margin-top:9px;border-top:1px dashed var(--line);padding-top:9px;
+  }
+  .reveal>summary{
+    cursor:pointer;font-size:12.5px;color:var(--acc);list-style:none;font-weight:550;
+    display:inline-flex;align-items:center;gap:5px;user-select:none;
+  }
+  .reveal>summary::-webkit-details-marker{display:none}
+  .reveal>summary::before{content:'▸';transition:.2s;display:inline-block}
+  .reveal[open]>summary::before{transform:rotate(90deg)}
+  .reveal .rb{margin-top:8px;font-size:14px;color:#dfe6f0}
+
+  /* 知识点增强小课堂 */
+  .extra{
+    margin-top:22px;padding:15px 17px;border-radius:12px;
+    background:linear-gradient(135deg,rgba(76,141,255,.09),rgba(123,92,255,.07));
+    border:1px solid rgba(76,141,255,.28);
+  }
+  .extra .exh{
+    font-size:13.5px;font-weight:650;color:#a8c6ff;margin-bottom:9px;
+    display:flex;align-items:center;gap:7px;letter-spacing:.2px;
+  }
+  .extra .exb{font-size:14.5px;color:#dfe6f0;line-height:1.78}
+  .extra .exb p{margin:0 0 9px}
+  .extra .exb p:last-child{margin-bottom:0}
+  .extra .exb ul,.extra .exb ol{margin:6px 0 9px;padding-left:20px}
+  .extra .exb li{margin-bottom:5px}
+  .extra .exb strong{color:#fff;font-weight:650}
+  .extra .exb code{
+    background:rgba(255,255,255,.07);padding:1.5px 5px;border-radius:5px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;color:#9fd0ff;
+  }
+
+  /* 原始文本折叠 */
+  .raw{margin-top:14px}
+  .raw>summary{
+    cursor:pointer;font-size:12.5px;color:var(--fg3);list-style:none;
+    display:inline-flex;align-items:center;gap:5px;user-select:none;
+  }
+  .raw>summary::-webkit-details-marker{display:none}
+  .raw>summary::before{content:'▸';transition:.2s;display:inline-block}
+  .raw[open]>summary::before{transform:rotate(90deg)}
+  .raw pre{
+    margin-top:9px;background:var(--bg);border:1px solid var(--line);border-radius:10px;
+    padding:12px;font-size:12.5px;line-height:1.65;overflow-x:auto;color:var(--fg2);
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word;
+  }
+
+  /* ---------- 加载 ---------- */
+  .loading{display:flex;flex-direction:column;align-items:center;gap:14px;padding:34px 0}
+  .spin{
+    width:34px;height:34px;border:2.5px solid var(--line);border-top-color:var(--acc);
+    border-radius:50%;animation:sp .8s linear infinite;
+  }
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .loading .lt{font-size:13.5px;color:var(--fg2)}
+  .loading .ls{font-size:12px;color:var(--fg3)}
+  .stream-out{
+    margin-top:12px;background:var(--bg);border:1px solid var(--line);border-radius:10px;
+    padding:12px;font-size:12.5px;color:var(--fg2);max-height:210px;overflow-y:auto;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap;
+    word-break:break-word;line-height:1.6;
+  }
+
+  /* ---------- 钉顶：题目原文 ---------- */
+  #pinnedQ{display:none}
+  #pinnedQ.show{
+    display:block;
+    position:sticky;
+    top:var(--headH,56px);
+    z-index:49;
+  }
+  body.hdr-hidden #pinnedQ.show{top:0}
+  .pq{
+    background:rgba(19,23,30,.97);
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--line);
+    box-shadow:0 6px 16px -8px rgba(0,0,0,.7);
+  }
+  .pqin{max-width:920px;margin:0 auto;padding:9px 16px 10px}
+  .pqhead{
+    display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;
+    font-size:11.5px;color:var(--fg3);font-weight:600;letter-spacing:.3px;
+  }
+  .pqhead .arw{transition:.2s;display:inline-block;font-size:9px}
+  .pq.collapsed .pqhead .arw{transform:rotate(-90deg)}
+  .pqhead .cnt{margin-left:auto;font-weight:500;color:var(--fg3);font-size:11px}
+  .pqbody{
+    margin-top:7px;font-size:13.5px;line-height:1.7;color:#d6dee9;
+    max-height:31vh;overflow-y:auto;padding-right:4px;
+  }
+  .pq.collapsed .pqbody{display:none}
+  .pqbody p{margin:0 0 7px}
+  .pqbody p:last-child{margin-bottom:0}
+  .pqbody strong{color:#fff;font-weight:650}
+  .pqbody ul,.pqbody ol{margin:5px 0 7px;padding-left:19px}
+  .pqbody code{
+    background:rgba(255,255,255,.07);padding:1px 4px;border-radius:4px;
+    font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:#9fd0ff;
+  }
+  .pqbody .mk{background:linear-gradient(180deg,transparent 58%,rgba(240,160,32,.34) 58%);color:#fff;font-weight:600}
+
+  /* ---------- 对话流 ---------- */
+  .chat{display:flex;flex-direction:column;gap:12px;padding-bottom:8px}
+  .msg{position:relative;animation:rise .4s cubic-bezier(.22,1,.36,1) both}
+  .msg .av{
+    position:absolute;left:0;top:12px;z-index:1;
+    width:30px;height:30px;border-radius:9px;display:flex;
+    align-items:center;justify-content:center;font-size:13px;font-weight:650;
+  }
+  .msg.ai .av{background:rgba(76,141,255,.16);border:1px solid rgba(76,141,255,.4);color:#8db6ff}
+  .msg.me .av{background:rgba(46,204,143,.14);border:1px solid rgba(46,204,143,.38);color:#6fd8ae}
+  .msg .bub{
+    background:var(--bg2);border:1px solid var(--line);
+    border-radius:13px;padding:13px 15px;font-size:14.5px;line-height:1.78;
+    color:#e2e8f1;
+    margin-left:40px;              /* 给头像留出横向位置，不占纵向空间 */
+  }
+  .msg.me .bub{
+    background:rgba(46,204,143,.09);border-color:rgba(46,204,143,.28);color:#d8f0e6;
+    margin-left:0;margin-right:40px;
+  }
+  .msg.me .av{left:auto;right:0}
+  .msg .bub .stt{
+    font-size:12px;font-weight:650;color:#8db6ff;margin-bottom:8px;
+    display:flex;align-items:center;gap:6px;letter-spacing:.2px;
+  }
+  .msg.st-pass .bub .stt{color:#6fd8ae}
+  .msg.st-warn .bub .stt{color:#f2bd63}
+  .msg .bub p{margin:0 0 9px}
+  .msg .bub p:last-child{margin-bottom:0}
+  .msg .bub ul,.msg .bub ol{margin:6px 0 9px;padding-left:20px}
+  .msg .bub li{margin-bottom:5px}
+  .msg .bub strong{color:#fff;font-weight:650}
+  .msg .bub h4{margin:0 0 7px;font-size:14px;font-weight:650;color:#cfe0ff}
+  .msg .bub code{
+    background:rgba(255,255,255,.07);padding:1.5px 5px;border-radius:5px;
+    font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:#9fd0ff;
+  }
+  .msg .bub pre{
+    background:rgba(0,0,0,.32);border:1px solid var(--line);border-radius:9px;
+    padding:11px 13px;overflow-x:auto;font-size:13px;line-height:1.6;
+    font-family:ui-monospace,Menlo,Consolas,monospace;color:#c9d6e8;margin:9px 0;
+  }
+  .msg .bub table{border-collapse:collapse;width:100%;margin:9px 0;font-size:13.5px}
+  .msg .bub th,.msg .bub td{border:1px solid var(--line);padding:6px 9px;text-align:left}
+  .msg .bub th{background:rgba(255,255,255,.045);font-weight:600}
+  .msg .bub .mk{
+    background:linear-gradient(180deg,transparent 58%,rgba(240,160,32,.34) 58%);
+    padding:0 1px;border-radius:2px;color:#fff;font-weight:600;
+  }
+  .msg .bub .quiz{
+    background:rgba(76,141,255,.075);border:1px solid rgba(76,141,255,.28);
+    border-radius:10px;padding:12px 14px;margin:10px 0;
+  }
+  .msg .bub .quiz .qh{font-size:11.5px;color:#8db6ff;font-weight:650;margin-bottom:6px;letter-spacing:.4px}
+  .msg.ext .bub{
+    background:linear-gradient(135deg,rgba(76,141,255,.1),rgba(123,92,255,.08));
+    border-color:rgba(76,141,255,.3);
+  }
+
+  /* 打字指示 */
+  .dots{display:inline-flex;gap:4px;align-items:center;height:18px}
+  .dots i{width:6px;height:6px;border-radius:50%;background:var(--fg3);animation:bl 1.2s infinite}
+  .dots i:nth-child(2){animation-delay:.18s}
+  .dots i:nth-child(3){animation-delay:.36s}
+  @keyframes bl{0%,60%,100%{opacity:.28;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+
+  /* 下一步按钮 */
+  .nextwrap{display:flex;justify-content:center;padding:6px 0 2px}
+  .btn.next{
+    background:rgba(76,141,255,.13);border-color:rgba(76,141,255,.42);color:#a8c6ff;
+    padding:11px 26px;font-weight:600;
+  }
+  .btn.next:hover:not(:disabled){background:rgba(76,141,255,.22);border-color:var(--acc)}
+  .progress{text-align:center;font-size:11.5px;color:var(--fg3);padding-top:4px}
+
+  /* ---------- 底部输入（钉底） ---------- */
+  .composer{
+    position:fixed;left:0;right:0;bottom:0;z-index:70;
+    background:rgba(15,17,21,.94);backdrop-filter:blur(16px);
+    border-top:1px solid var(--line);
+    padding:9px 16px calc(9px + env(safe-area-inset-bottom));
+  }
+  .composer .cin{max-width:920px;margin:0 auto;display:flex;gap:9px;align-items:flex-end}
+  .composer textarea{
+    flex:1;min-height:42px;max-height:120px;padding:10px 13px;border-radius:12px;
+    background:var(--bg2);border:1px solid var(--line);color:var(--fg);
+    font-size:14.5px;font-family:inherit;resize:none;outline:none;line-height:1.5;
+  }
+  .composer textarea:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(76,141,255,.13)}
+  .composer .send{
+    width:44px;height:42px;border-radius:12px;border:1px solid var(--acc);
+    background:var(--acc);color:#fff;font-size:17px;cursor:pointer;flex:none;
+    display:flex;align-items:center;justify-content:center;transition:.15s;
+  }
+  .composer .send:hover:not(:disabled){background:var(--acc2)}
+  .composer .send:disabled{opacity:.4;cursor:not-allowed}
+  .composer .tip{
+    max-width:920px;margin:6px auto 0;font-size:11px;color:var(--fg3);display:flex;
+    align-items:center;gap:8px;flex-wrap:wrap;
+  }
+  .composer .tip .k{
+    background:var(--bg3);border:1px solid var(--line);border-radius:5px;
+    padding:1px 5px;font-size:10.5px;color:var(--fg2);
+  }
+
+  /* 收尾 */
+  .ending{text-align:center;padding:18px 0 4px;color:var(--fg3);font-size:12.5px}
+  .ending .line{
+    display:inline-flex;align-items:center;gap:9px;
+  }
+  .ending .line::before,.ending .line::after{
+    content:'';width:36px;height:1px;background:var(--line);
+  }
+
+  /* ---------- 互动测验 ---------- */
+  .qz{
+    margin-top:12px;border-radius:12px;padding:13px 14px;
+    background:rgba(76,141,255,.07);border:1px solid rgba(76,141,255,.3);
+  }
+  .qz.done-ok{background:rgba(46,204,143,.07);border-color:rgba(46,204,143,.32)}
+  .qz.done-part{background:rgba(240,160,32,.07);border-color:rgba(240,160,32,.32)}
+  .qz.done-no{background:rgba(255,92,92,.06);border-color:rgba(255,92,92,.3)}
+  .qz .qzh{
+    font-size:11.5px;font-weight:650;color:#8db6ff;margin-bottom:8px;
+    display:flex;align-items:center;gap:6px;letter-spacing:.3px;
+  }
+  .qz.done-ok .qzh{color:#6fd8ae}
+  .qz.done-part .qzh{color:#f2bd63}
+  .qz.done-no .qzh{color:#ff9b9b}
+  .qz .qzq{font-size:14.5px;color:#e4eaf3;line-height:1.7;margin-bottom:10px}
+  .qz .qzq p{margin:0 0 6px}
+  .qz .qzq p:last-child{margin-bottom:0}
+
+  /* 多选一 */
+  .opts{display:flex;flex-direction:column;gap:8px}
+  .opt{
+    display:flex;align-items:flex-start;gap:10px;padding:11px 13px;border-radius:10px;
+    background:var(--bg);border:1px solid var(--line);cursor:pointer;
+    font-size:14.5px;line-height:1.6;color:#dfe6f0;transition:.14s;text-align:left;
+    font-family:inherit;width:100%;
+  }
+  .opt:hover:not(:disabled){border-color:var(--acc);background:rgba(76,141,255,.06)}
+  .opt:disabled{cursor:default}
+  .opt .mk-letter{
+    width:22px;height:22px;border-radius:50%;flex:none;display:flex;align-items:center;
+    justify-content:center;font-size:12px;font-weight:700;
+    background:rgba(255,255,255,.07);color:var(--fg2);border:1px solid var(--line);
+    margin-top:1px;
+  }
+  .opt .mk-txt{flex:1;min-width:0}
+  .opt .mk-txt p{margin:0}
+  .opt.sel{border-color:var(--acc);background:rgba(76,141,255,.12)}
+  .opt.sel .mk-letter{background:var(--acc);color:#fff;border-color:var(--acc)}
+  .opt.right{border-color:rgba(46,204,143,.6);background:rgba(46,204,143,.12)}
+  .opt.right .mk-letter{background:var(--ok);color:#04150e;border-color:var(--ok)}
+  .opt.wrong{border-color:rgba(255,92,92,.55);background:rgba(255,92,92,.1)}
+  .opt.wrong .mk-letter{background:var(--err);color:#1a0505;border-color:var(--err)}
+
+  /* 横线填空 */
+  .blankrow{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .blankin{
+    flex:1;min-width:120px;padding:9px 12px;border-radius:9px;
+    background:var(--bg);border:1px solid var(--line);border-bottom:2px solid var(--acc);
+    color:var(--fg);font-size:15px;font-family:inherit;outline:none;transition:.15s;
+  }
+  .blankin:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(76,141,255,.13)}
+  .blankin:disabled{opacity:.85}
+
+  /* 互动提问 */
+  .askrow textarea{
+    width:100%;min-height:74px;padding:11px 13px;border-radius:10px;
+    background:var(--bg);border:1px solid var(--line);color:var(--fg);
+    font-size:14.5px;font-family:inherit;line-height:1.6;resize:vertical;outline:none;
+  }
+  .askrow textarea:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(76,141,255,.13)}
+
+  /* 提交 / 反馈 */
+  .qzact{display:flex;gap:9px;margin-top:11px;flex-wrap:wrap}
+  .qzact .btn{padding:9px 18px;font-size:14px}
+  .qzhint{font-size:12px;color:var(--fg3);margin-top:8px}
+  .fb{
+    margin-top:11px;padding:11px 13px;border-radius:10px;font-size:14px;line-height:1.7;
+    border:1px solid var(--line);background:rgba(0,0,0,.2);
+  }
+  .fb .fbt{
+    font-size:11.5px;font-weight:700;margin-bottom:5px;display:flex;align-items:center;gap:6px;
+  }
+  .fb.ok{border-color:rgba(46,204,143,.4);background:rgba(46,204,143,.07)}
+  .fb.ok .fbt{color:#6fd8ae}
+  .fb.part{border-color:rgba(240,160,32,.4);background:rgba(240,160,32,.07)}
+  .fb.part .fbt{color:#f2bd63}
+  .fb.no{border-color:rgba(255,92,92,.38);background:rgba(255,92,92,.06)}
+  .fb.no .fbt{color:#ff9b9b}
+  .fb .fbb{color:#dfe6f0}
+  .fb .fbb p{margin:0 0 7px}
+  .fb .fbb p:last-child{margin-bottom:0}
+  .fb .ansline{
+    margin-top:7px;padding-top:7px;border-top:1px dashed var(--line);
+    font-size:13px;color:var(--fg2);
+  }
+  /* 等待判卷 */
+  .grading{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--fg3)}
+  .grading .spin{width:14px;height:14px;border-width:2px}
+
+  /* 步骤内的小步骤标识 */
+  .msg.sub .bub{border-left:2px solid rgba(76,141,255,.35)}
+  .msg.sub .av{background:rgba(76,141,255,.1);border-color:rgba(76,141,255,.3);color:#7fa8e8}
+
+  /* 截断警告条 */
+  .truncwarn{
+    margin-bottom:12px;padding:12px 14px;border-radius:11px;
+    background:rgba(240,160,32,.09);border:1px solid rgba(240,160,32,.42);
+  }
+  .truncwarn .tw-t{font-size:13.5px;font-weight:650;color:#f2bd63;margin-bottom:5px}
+  .truncwarn .tw-b{font-size:13.5px;color:#e6d5b4;line-height:1.7}
+
+  /* ---------- 公式（MathJax）适配：防止手机端被截断 ---------- */
+  /* 行内公式：允许正常换行，不撑破容器 */
+  .msg .bub mjx-container,
+  .pqbody mjx-container,
+  .extra .exb mjx-container,
+  .fb .fbb mjx-container{
+    max-width:100%;
+    overflow-x:auto;              /* 太宽时可横向滚动，而不是被裁掉 */
+    overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;
+    vertical-align:middle;
+  }
+  .msg .bub mjx-container[display="true"],
+  .pqbody mjx-container[display="true"],
+  .extra .exb mjx-container[display="true"],
+  .fb .fbb mjx-container[display="true"]{
+    display:block;
+    margin:10px 0;
+    padding:2px 0 4px;
+  }
+  /* 横向滚动条做细一点，别抢视觉 */
+  .msg .bub mjx-container::-webkit-scrollbar,
+  .pqbody mjx-container::-webkit-scrollbar{height:3px}
+  .msg .bub mjx-container::-webkit-scrollbar-thumb,
+  .pqbody mjx-container::-webkit-scrollbar-thumb{
+    background:rgba(255,255,255,.16);border-radius:3px;
+  }
+  /* 行内公式的字号略小，减少溢出概率 */
+  .msg .bub mjx-container:not([display="true"]),
+  .pqbody mjx-container:not([display="true"]),
+  .fb .fbb mjx-container:not([display="true"]){font-size:105%}
+  /* 长公式块外面套的滚动容器 */
+  .mathscroll{
+    overflow-x:auto;-webkit-overflow-scrolling:touch;
+    margin:10px 0;padding:2px 0 4px;
+  }
+  .mathscroll mjx-container[display="true"]{margin:0}
+
+  /* 存储状态区 */
+  .storebox{
+    margin-top:14px;padding:12px 13px;border-radius:11px;
+    background:rgba(76,141,255,.06);border:1px solid rgba(76,141,255,.24);
+  }
+  .sbh{
+    display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;
+    color:#a8c6ff;margin-bottom:7px;flex-wrap:wrap;
+  }
+  .sbs{font-size:11px;font-weight:400;color:var(--fg3);margin-left:auto}
+  .sbb{font-size:12.5px;color:var(--fg2);line-height:1.65}
+  .storebox .btn.sm{padding:7px 11px;font-size:12.5px}
+
+  /* ---------- 隐藏 input ---------- */
+  .hid{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;top:-9999px}
+
+  /* ---------- Toast ---------- */
+  #toast{
+    position:fixed;left:50%;bottom:96px;transform:translate(-50%,14px);z-index:200;
+    background:rgba(30,36,45,.97);border:1px solid var(--line);color:var(--fg);
+    padding:10px 16px;border-radius:11px;font-size:13px;opacity:0;transition:.24s;
+    pointer-events:none;max-width:88vw;text-align:center;box-shadow:0 8px 28px rgba(0,0,0,.5);
+  }
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+
+  .presets{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+  .preset{
+    padding:5px 11px;border-radius:8px;border:1px solid var(--line);background:var(--bg);
+    color:var(--fg2);font-size:12px;cursor:pointer;font-family:inherit;transition:.15s;
+  }
+  .preset:hover{border-color:var(--acc);color:var(--acc)}
+
+  /* 模型探测列表 */
+  .msearch{
+    width:100%;padding:8px 11px;margin-bottom:8px;background:var(--bg);
+    border:1px solid var(--line);border-radius:9px;color:var(--fg);font-size:13px;
+    font-family:inherit;outline:none;
+  }
+  .msearch:focus{border-color:var(--acc)}
+  .mlist{
+    max-height:230px;overflow-y:auto;border:1px solid var(--line);
+    border-radius:10px;background:var(--bg);
+  }
+  .mitem{
+    display:flex;align-items:center;gap:8px;padding:8px 11px;cursor:pointer;
+    border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;transition:.12s;
+  }
+  .mitem:last-child{border-bottom:none}
+  .mitem:hover{background:rgba(76,141,255,.09)}
+  .mitem.on{background:rgba(76,141,255,.13)}
+  .mitem .mid{
+    font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;
+    color:var(--fg);flex:1;word-break:break-all;
+  }
+  .mitem .vtag{
+    font-size:10px;padding:1px 6px;border-radius:5px;flex:none;font-weight:600;
+    background:rgba(46,204,143,.15);color:#6fd8ae;border:1px solid rgba(46,204,143,.35);
+  }
+  .mitem .otag{
+    font-size:10px;padding:1px 6px;border-radius:5px;flex:none;
+    background:rgba(255,255,255,.06);color:var(--fg3);border:1px solid var(--line);
+  }
+  .mempty{padding:14px;text-align:center;font-size:12.5px;color:var(--fg3)}
+  .mfoot{
+    display:flex;align-items:center;gap:9px;margin-top:8px;
+    font-size:11.5px;color:var(--fg3);flex-wrap:wrap;
+  }
+  .mfoot .sw{
+    cursor:pointer;color:var(--acc);user-select:none;
+  }
+  .badge{
+    display:inline-block;padding:1.5px 7px;border-radius:6px;font-size:11px;
+    background:rgba(76,141,255,.14);color:#8db6ff;border:1px solid rgba(76,141,255,.3);
+  }
+  @media(max-width:560px){
+    .slots{grid-template-columns:1fr 1fr;gap:9px}
+    .wrap{padding:0 12px 130px}
+    .board{padding:15px 14px 18px}
+    .step{padding-left:35px}
+    .step .no{width:24px;height:24px;font-size:11.5px}
+  }
+
+  /* ================= 移动端优先（≤760px） ================= */
+  @media(max-width:760px){
+    body{font-size:15.5px}
+
+    /* 顶栏收紧 */
+    .hbar{padding:9px 12px;gap:8px}
+    .logo{width:27px;height:27px;border-radius:8px;font-size:14px}
+    .htitle{font-size:15px}
+    .hsub{font-size:10.5px}
+    .iconbtn{width:33px;height:33px;font-size:15px;border-radius:9px}
+
+    /* 内容区：给底部输入栏留够空间 */
+    .wrap{padding:0 11px calc(96px + env(safe-area-inset-bottom))}
+
+    /* 钉顶栏更矮，长题目正文限高放宽 */
+    .pqin{padding:7px 12px 8px}
+    .pqhead{font-size:11px}
+    .pqbody{font-size:13px;max-height:34vh;margin-top:6px}
+    .pqbody .mk{padding:0}
+
+    /* 卡片与气泡：减少内边距，文字更满 */
+    .card{padding:13px 13px;border-radius:12px}
+    .chat{gap:10px}
+
+    /* ---------- 移动端：满宽消息块，头像浮到左上角 ---------- */
+    /* 讲解态下内容区不留左右边距，表格/公式能用满整屏；
+       上传态仍保留边距，避免卡片贴边 */
+    body.explaining .wrap{padding:0 0 calc(96px + env(safe-area-inset-bottom))}
+
+    /* 讲解区去掉外框与圆角，像「题目原文」那样通栏排布 */
+    body.explaining .board{
+      padding:0;border:none;border-radius:0;background:transparent;
+      margin:0;
+    }
+    body.explaining .board::before{display:none}
+    /* 讲解态下顶部也不要留白 */
+    body.explaining #result{margin-top:0}
+
+    /* 消息块：通栏 + 无圆角 + 仅靠分隔线区分 */
+    .msg .bub{
+      margin-left:0;margin-right:0;
+      padding:12px 14px;
+      font-size:15px;line-height:1.78;
+      border-radius:0;
+      border-left:none;border-right:none;
+      border-top:none;
+      border-bottom:1px solid var(--line);
+      background:transparent;
+    }
+    .msg.me .bub{
+      margin-left:0;margin-right:0;
+      background:rgba(46,204,143,.07);
+    }
+    /* 头像缩小并浮到气泡左上角内侧 */
+    .msg .av{
+      width:24px;height:24px;font-size:11px;border-radius:7px;
+      left:10px;top:10px;
+    }
+    .msg.me .av{left:auto;right:10px}
+    /* 气泡文字让开头一段，避免与头像重叠 */
+    .msg .bub > *:first-child{padding-left:30px;min-height:24px}
+    .msg.me .bub > *:first-child{padding-left:0;padding-right:30px}
+    /* 步骤标题不缩进太多，保持可读 */
+    .msg .bub .stt{margin-bottom:6px}
+    .msg .av{pointer-events:none}
+
+    /* 小课堂：通栏，只保留上边框做区隔 */
+    .extra{
+      margin:0;padding:13px 14px;border-radius:0;
+      border-left:none;border-right:none;
+    }
+    .extra .exh{padding-left:30px}
+
+    /* 截断警告条同样通栏 */
+    .truncwarn{margin:0;border-radius:0;border-left:none;border-right:none}
+
+    /* 下一步按钮所在的包裹层 */
+    .nextwrap{padding:12px 14px}
+
+    /* 测验：选项更大更好点 */
+    .opt{padding:13px 13px;font-size:15px}
+    .opt .mk-letter{width:24px;height:24px;font-size:12.5px}
+    .qz{padding:12px 12px}
+    .qz .qzq{font-size:15px}
+    .qzact{flex-direction:column;gap:8px}
+    .qzact .btn{width:100%;padding:12px 16px;font-size:15px}
+    .blankin{padding:11px 13px;font-size:16px}  /* ≥16px 防止 iOS 聚焦缩放 */
+    .askrow textarea{font-size:16px;min-height:82px}
+
+    /* 底部输入栏 */
+    .composer{padding:8px 11px calc(8px + env(safe-area-inset-bottom))}
+    .composer .cin{gap:8px}
+    .composer textarea{font-size:16px;min-height:40px;padding:9px 12px;border-radius:11px}
+    .composer .send{width:42px;height:40px;border-radius:11px}
+    /* 移动端隐藏键盘快捷键提示（触屏没有 Enter/Esc 概念） */
+    .composer .tip{display:none}
+
+    /* 顶栏「重拍」按钮：触屏更好点 */
+    .btn-retake{padding:7px 11px;font-size:12.5px;border-radius:9px}
+
+    /* 输入类控件统一 16px，避免 iOS 自动放大 */
+    input[type=text],input[type=password],input[type=number],select,textarea{font-size:16px}
+
+    /* 配置面板 */
+    .row>*{min-width:100%}
+    .slots{gap:8px}
+    .slot .ph{font-size:11.5px}
+    .slot .ph .big{font-size:22px}
+
+    /* 模型列表 */
+    .mitem{padding:10px 11px}
+    .mitem .mid{font-size:13px}
+    .mlist{max-height:200px}
+
+    /* 下一步按钮：全宽大按钮，方便拇指点 */
+    .nextwrap{padding:4px 0 2px}
+    .btn.next{padding:14px 20px;font-size:15.5px;width:100%;font-weight:650}
+    .progress{font-size:11px}
+
+    /* 表格横向滚动而不是撑破布局 */
+    .msg .bub table{display:block;overflow-x:auto;white-space:nowrap}
+    .msg .bub pre{font-size:12.5px}
+
+    /* 公式：手机上适当缩小，减少横向滚动 */
+    .msg .bub mjx-container,
+    .pqbody mjx-container,
+    .extra .exb mjx-container{font-size:96%}
+    .msg .bub mjx-container[display="true"],
+    .pqbody mjx-container[display="true"]{font-size:92%}
+
+    /* 钉顶栏在手机上更紧凑，保证不占用过多可视区 */
+    .pqin{padding:6px 11px 7px}
+    .pqhead{font-size:10.5px}
+    .pqbody{font-size:13px;max-height:30vh;margin-top:5px}
+
+    /* 小课堂：保持通栏，仅字号微调 */
+    .extra .exb{font-size:15px}
+
+    /* 弹窗类信息更靠上 */
+    #toast{bottom:calc(88px + env(safe-area-inset-bottom));font-size:13.5px;max-width:92vw}
+  }
+
+  /* 超窄屏（≤380px）再收一档 */
+  @media(max-width:380px){
+    .hsub{display:none}
+    .msg .bub{font-size:14.5px;padding:11px 11px}
+    .opt{font-size:14.5px;padding:11px 11px}
+    .pqbody{font-size:12.5px}
+  }
+
+  /* 横屏矮屏：钉顶栏正文更矮 */
+  @media(max-height:520px) and (orientation:landscape){
+    .pqbody{max-height:22vh}
+    .pqin{padding:5px 12px 6px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hbar">
+    <div class="logo">✦</div>
+    <div>
+      <div class="htitle">AI 精讲</div>
+      <div class="hsub">拍照解题 · 动态板书讲解</div>
+    </div>
+    <div class="hspace"></div>
+    <button class="btn-retake" id="btnRetake" title="清空讲解，重新拍题">↻ 重拍</button>
+    <button class="iconbtn" id="btnCfg" title="设置 API">⚙</button>
+    <button class="iconbtn" id="btnHelp" title="使用说明">?</button>
+  </div>
+</header>
+
+<!-- 钉顶：识别到的题目原文 -->
+<div id="pinnedQ">
+  <div class="pq" id="pqBox">
+    <div class="pqin">
+      <div class="pqhead" id="pqHead">
+        <span class="arw">▼</span>
+        <span>题目原文</span>
+        <span class="cnt" id="pqCnt"></span>
+      </div>
+      <div class="pqbody" id="pqBody"></div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- 配置面板 -->
+  <div class="card" id="cfgPanel" style="display:none">
+    <h3><span class="dot"></span>模型 API 设置</h3>
+
+    <div class="presets" id="presets"></div>
+
+    <label class="fl">接口地址（Base URL）</label>
+    <input type="text" id="cfgBase" placeholder="https://api.openai.com/v1" autocomplete="off" spellcheck="false">
+    <div class="hint" style="margin-top:5px">填到 <code>/v1</code> 为止，程序会自动拼接 <code>/chat/completions</code></div>
+
+    <label class="fl">API Key</label>
+    <input type="password" id="cfgKey" placeholder="sk-..." autocomplete="off">
+
+    <label class="fl">模型名称（需支持图片输入）</label>
+    <div style="display:flex;gap:8px">
+      <input type="text" id="cfgModel" placeholder="gpt-4o-mini" autocomplete="off" spellcheck="false" style="flex:1">
+      <button class="btn sm" id="btnDetect" style="flex:none" title="从 /v1/models 拉取可用模型">探测模型</button>
+    </div>
+    <div id="modelList" style="display:none;margin-top:9px"></div>
+
+    <label class="fl">请求方式</label>
+    <select id="cfgMode">
+      <option value="auto">自动（优先两张一起发，失败则分次）</option>
+      <option value="multi">两张一起发给模型</option>
+      <option value="seq">逐张分次请求再合并</option>
+    </select>
+
+    <div class="row" style="margin-top:12px">
+      <div>
+        <label class="fl" style="margin-top:0">最大输出 tokens</label>
+        <input type="number" id="cfgMaxTok" value="8192" min="512" max="65536" step="512">
+        <div class="hint" style="margin-top:5px;font-size:11px">讲解较长时建议 8192 以上，太小会被截断</div>
+      </div>
+      <div>
+        <label class="fl" style="margin-top:0">图片压缩宽度(px)</label>
+        <input type="number" id="cfgImgW" value="1280" min="480" max="2560" step="160">
+      </div>
+    </div>
+
+    <label class="fl" style="margin-top:12px;display:flex;align-items:center;gap:8px;cursor:pointer">
+      <input type="checkbox" id="cfgStream" checked style="width:auto;flex:none"> 启用流式输出（实时显示生成过程）
+    </label>
+
+    <div class="row" style="margin-top:14px">
+      <button class="btn primary" id="btnSaveCfg">保存设置</button>
+      <button class="btn" id="btnTest">测试连接</button>
+      <button class="btn ghost" id="btnClearCfg">清除</button>
+    </div>
+    <div class="status" id="cfgStatus"></div>
+
+    <!-- 存储状态与备份 -->
+    <div class="storebox">
+      <div class="sbh">
+        <span>💾 配置保存在哪里</span>
+        <span class="sbs" id="storeState"></span>
+      </div>
+      <div class="sbb" id="storeNote">
+        设置会优先存进浏览器本地存储。若你用的是打包应用或隐私模式，本地存储可能被清空——
+        可点下面的「生成配置链接」把设置写进网址，收藏该网址即可永久保留。
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn sm" id="btnMakeURL">生成配置链接</button>
+        <button class="btn sm" id="btnExport">导出配置</button>
+        <button class="btn sm" id="btnImport">导入配置</button>
+      </div>
+      <div id="urlOut" style="display:none;margin-top:10px">
+        <div class="hint" style="margin-bottom:6px">把下面这个链接收藏起来，下次打开设置就还在：</div>
+        <textarea id="urlText" readonly style="min-height:64px;font-size:12px;font-family:ui-monospace,Menlo,monospace"></textarea>
+        <div class="row" style="margin-top:8px">
+          <button class="btn sm primary" id="btnCopyURL">复制链接</button>
+          <button class="btn sm" id="btnApplyURL">立即写入地址栏</button>
+          <label class="fl" style="margin:6px 0 0;display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:400">
+            <input type="checkbox" id="urlWithKey" style="width:auto;flex:none">
+            <span style="font-size:12px;color:var(--fg3)">链接中包含 API Key（方便但注意别分享给别人）</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="hint" style="margin-top:11px">
+      🔒 设置只存在你自己的设备上，不会上传到任何第三方服务器，请求直接从你的浏览器发往所填接口。
+    </div>
+  </div>
+
+  <!-- 说明 -->
+  <div class="card" id="helpPanel" style="display:none">
+    <h3><span class="dot"></span>使用说明</h3>
+    <div class="hint" style="font-size:13px;color:var(--fg2);line-height:1.85">
+      <p style="margin:0 0 10px"><strong style="color:var(--fg)">1. 配置接口</strong>　点右上角 ⚙，填接口地址和 API Key。填完后点 <strong style="color:var(--fg)">「探测模型」</strong>，会自动请求 <code style="background:rgba(255,255,255,.07);padding:1px 5px;border-radius:4px">/v1/models</code> 列出可用模型，筛选项里点一下即可填入。探测不到也可以手动输入模型名。</p>
+      <p style="margin:0 0 10px;padding:10px 12px;background:rgba(240,160,32,.08);border:1px solid rgba(240,160,32,.3);border-radius:9px">
+        <strong style="color:#f2bd63">⚠️ 设置会丢？</strong>　如果你在打包应用（如 HTML Pocket）或隐私模式下打开，浏览器可能禁止本地存储，刷新后设置就没了。<br>
+        解决办法：设置面板里点 <strong style="color:var(--fg)">「生成配置链接」</strong>，把设置写进网址并<strong style="color:var(--fg)">收藏那个网址</strong>——以后用收藏的链接打开，设置就一直在。也可以用「导出配置」存成文件备着。
+      </p>
+      <p style="margin:0 0 10px"><strong style="color:var(--fg)">2. 拍题</strong>　点「拍照」调用系统相机，或点「相册」选已有图片。最多两张——<strong style="color:var(--fg)">一道题跨两页时分别拍上下两页</strong>，会自动合并理解成一道完整题目。</p>
+      <p style="margin:0 0 10px"><strong style="color:var(--fg)">3. 逐步精讲</strong>　点「开始精讲」后进入对话模式：识别到的<strong style="color:var(--fg)">题目原文钉在页面顶部</strong>始终可见；讲解<strong style="color:var(--fg)">一块一块出现</strong>，点「下一步」看下一块。解答较长时会自动拆成若干小步，一步步带你推进。</p>
+      <p style="margin:0 0 10px"><strong style="color:var(--fg)">4. 动手做测验</strong>　讲解中会穿插小测验，有三种：<strong style="color:var(--fg)">多选一</strong>（点选项，程序立刻判对错）、<strong style="color:var(--fg)">填空</strong>（在横线里填）、<strong style="color:var(--fg)">说一说</strong>（写思路，AI 会点评）。答错不要紧，会给出解析，还能点「重做」。</p>
+      <p style="margin:0 0 10px"><strong style="color:var(--fg)">5. 随时提问</strong>　输入框常驻页面底部，任何时候都能打字提问，AI 会带着题目和已讲内容回答。</p>
+      <p style="margin:0"><strong style="color:var(--fg)">快捷键</strong>　<code style="background:rgba(255,255,255,.07);padding:1px 5px;border-radius:4px">Enter</code> 发送（<code style="background:rgba(255,255,255,.07);padding:1px 5px;border-radius:4px">Shift+Enter</code> 换行）· <code style="background:rgba(255,255,255,.07);padding:1px 5px;border-radius:4px">Esc</code> 返回上传页重新拍题 · 下滑时顶栏会自动收起</p>
+    </div>
+    <button class="btn" id="btnCloseHelp" style="margin-top:14px">知道了</button>
+  </div>
+
+  <!-- 拍照区 -->
+  <div class="card" id="uploadCard">
+    <h3><span class="dot"></span>题目图片 <span class="badge" id="cntBadge">0 / 2</span></h3>
+    <div class="slots">
+      <div class="slot" id="slot0" data-i="0">
+        <div class="ph"><div class="big">📷</div><div>第 1 页 / 主图</div></div>
+      </div>
+      <div class="slot" id="slot1" data-i="1">
+        <div class="ph"><div class="big">＋</div><div>第 2 页（跨页可选）</div></div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn" id="btnCam">📷 拍照</button>
+      <button class="btn" id="btnAlbum">🖼 相册</button>
+      <button class="btn ghost" id="btnClearImg">清空</button>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn primary" id="btnGo" style="flex:2">开始精讲</button>
+      <button class="btn" id="btnRetry" disabled>重讲</button>
+    </div>
+    <label class="fl" style="margin-top:14px">补充说明（可选）</label>
+    <textarea id="extraNote" placeholder="例如：这是初二数学，只讲第 (2) 问；孩子卡在为什么要先配方……"></textarea>
+    <div class="status" id="imgStatus"></div>
+  </div>
+
+  <!-- 结果 -->
+  <div id="result"></div>
+
+</div>
+
+<!-- 底部输入（始终钉底） -->
+<div class="composer" id="composer">
+  <div class="cin">
+    <textarea id="askInput" rows="1" placeholder="随时可以在这里提问…"></textarea>
+    <button class="send" id="btnAsk" title="发送">➤</button>
+  </div>
+  <div class="tip" id="compTip"></div>
+</div>
+
+<!-- 隐藏 input -->
+<input type="file" id="fileCam" accept="image/*" capture="environment" class="hid">
+<input type="file" id="fileAlbum" accept="image/*" multiple class="hid">
+<input type="file" id="fileCfg" accept=".json,application/json" class="hid">
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* =========================================================================
+   AI 精讲 · 单文件拍照解题
+   纯前端实现：配置 OpenAI 兼容多模态接口 → 拍照/上传 → 结构化讲解
+   ========================================================================= */
+
+/* ---------------- 常量 ---------------- */
+const LS_KEY = 'aijj_cfg_v1';
+const MAX_IMAGES = 2;
+
+const PRESETS = [
+  { name:'OpenAI',    base:'https://api.openai.com/v1',        model:'gpt-4o-mini' },
+  { name:'DeepSeek',  base:'https://api.deepseek.com/v1',      model:'deepseek-chat' },
+  { name:'通义千问',   base:'https://dashscope.aliyuncs.com/compatible-mode/v1', model:'qwen-vl-max' },
+  { name:'智谱 GLM',  base:'https://open.bigmodel.cn/api/paas/v4', model:'glm-4v-plus' },
+  { name:'月之暗面',   base:'https://api.moonshot.cn/v1',       model:'moonshot-v1-8k-vision-preview' },
+  { name:'硅基流动',   base:'https://api.siliconflow.cn/v1',    model:'Qwen/Qwen2.5-VL-72B-Instruct' },
+  { name:'本地 Ollama',base:'http://localhost:11434/v1',        model:'llava' },
+];
+
+/* ---------------- 状态 ---------------- */
+const S = {
+  cfg: { base:'', key:'', model:'', mode:'auto', maxTok:8192, imgW:1280, stream:true },
+  images: [null, null],      // { dataUrl, w, h, name }
+  busy: false,
+  lastResult: null,          // 最近一次讲解的结构化结果
+  slotTarget: 0,             // 当前拍照/选图要填入的槽位
+  // 分步呈现
+  queue: [],                 // 待展示的步骤队列
+  shown: 0,                  // 已展示到第几步
+  boardEl: null,             // 对话流容器
+  extendItem: null,          // 知识点增强小课堂
+  finalQuiz: null,           // 综合测验（步骤之外）
+  qCtx: null,                // 判卷上下文（题目原文等）
+  started: false,            // 是否已进入讲解态
+  models: [],                // 探测到的模型列表
+  allModels: [],
+};
+
+/* ---------------- 工具 ---------------- */
+const $ = id => document.getElementById(id);
+
+function toast(msg, ms = 2200){
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._tm);
+  t._tm = setTimeout(()=>t.classList.remove('show'), ms);
+}
+
+function setStatus(el, msg, type){
+  const e = typeof el === 'string' ? $(el) : el;
+  if(!msg){ e.className = 'status'; e.textContent = ''; return; }
+  e.className = 'status show ' + (type || 'info');
+  e.textContent = msg;
+}
+
+function esc(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+/* 解析诊断：记录是否发生过修复，以及大概丢了多少步骤 */
+const LAST_PARSE = { repaired:false, seenSteps:0, keptSteps:0, lostSteps:0 };
+function resetParseDiag(){
+  LAST_PARSE.repaired = false;
+  LAST_PARSE.seenSteps = 0;
+  LAST_PARSE.keptSteps = 0;
+  LAST_PARSE.lostSteps = 0;
+}
+/* 从原始文本里数「有多少个步骤对象出现过」——用 "key" 字段作为计数锚点 */
+function countSeenSteps(rawText){
+  const m = String(rawText || '').match(/"key"\s*:/g);
+  return m ? m.length : 0;
+}
+function markRepaired(rawText, obj){
+  LAST_PARSE.repaired = true;
+  LAST_PARSE.seenSteps = countSeenSteps(rawText);
+  LAST_PARSE.keptSteps = (obj && Array.isArray(obj.steps)) ? obj.steps.length : 0;
+  LAST_PARSE.lostSteps = Math.max(0, LAST_PARSE.seenSteps - LAST_PARSE.keptSteps);
+  return obj;
+}
+
+/* 从可能带 markdown 围栏的文本里抽出 JSON
+   支持修复被 max_tokens 截断的半截 JSON */
+function extractJSON(text){
+  if(!text) return null;
+  let t = String(text).trim();
+
+  // 去掉 ```json ... ``` 围栏
+  const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if(fence) t = fence[1].trim();
+
+  // 直接尝试
+  try { return JSON.parse(t); } catch(_){}
+
+  // 截取第一个 { 之后的内容
+  const a = t.indexOf('{');
+  if(a === -1) return null;
+
+  // 优先：从第一个 { 起，找出第一个「括号配平」的完整对象
+  const balanced = firstBalancedObject(t, a);
+  if(balanced){
+    try { return JSON.parse(balanced); } catch(_){}
+  }
+
+  const lastBrace = t.lastIndexOf('}');
+  const tail = t.slice(t.length - 1);
+
+  // 其次：按最后一个 } 截取（能覆盖「后面还有别的废话」的情形）
+  if(lastBrace > a){
+    const seg0 = t.slice(a, lastBrace + 1);
+    try { return JSON.parse(seg0); } catch(_){}
+    try { return JSON.parse(seg0.replace(/,\s*([}\]])/g, '$1')); } catch(_){}
+  }
+
+  // 结尾不是 } 或 ] → 很可能被截断，交给修复逻辑
+  if(tail !== '}' && tail !== ']'){
+    const repairedAll = repairTruncatedJSON(t.slice(a));
+    if(repairedAll){
+      try {
+        const o = JSON.parse(repairedAll);
+        // 空对象没有意义，别当成成功
+        if(o && typeof o === 'object' && Object.keys(o).length){
+          markRepaired(t, o);
+          return o;
+        }
+      } catch(_){}
+    }
+  }
+
+  // 兜底：对最后一个 } 之前的片段做修复
+  const seg = lastBrace > a ? t.slice(a, lastBrace + 1) : t.slice(a);
+  const repaired = repairTruncatedJSON(seg);
+  if(repaired){
+    try {
+      const o = JSON.parse(repaired);
+      if(o && typeof o === 'object' && Object.keys(o).length){
+        markRepaired(t, o);
+        return o;
+      }
+    } catch(_){}
+  }
+  return null;
+}
+
+/* 从下标 start（应为 {）起，返回第一个括号配平的完整 JSON 片段 */
+function firstBalancedObject(s, start){
+  const stack = [];
+  let inStr = false, esc = false;
+  for(let i = start; i < s.length; i++){
+    const c = s[i];
+    if(esc){ esc = false; continue; }
+    if(c === '\\'){ esc = true; continue; }
+    if(c === '"'){ inStr = !inStr; continue; }
+    if(inStr) continue;
+    if(c === '{' || c === '[') stack.push(c);
+    else if(c === '}' || c === ']'){
+      const top = stack[stack.length - 1];
+      if((c === '}' && top === '{') || (c === ']' && top === '[')){
+        stack.pop();
+        if(!stack.length) return s.slice(start, i + 1);
+      } else {
+        return null;   // 括号不匹配，放弃
+      }
+    }
+  }
+  return null;   // 没配平，说明被截断了
+}
+
+/* 修补被截断的 JSON：补全未闭合的字符串/数组/对象，并丢弃最后一个不完整的元素 */
+function repairTruncatedJSON(s){
+  if(!s) return null;
+  let str = String(s);
+  let best = null;
+
+  // 逐步回退：每次砍掉尾巴，尝试闭合
+  for(let attempt = 0; attempt < 240; attempt++){
+    const cand = closeJSON(str);
+    if(cand){
+      try {
+        const obj = JSON.parse(cand);
+        // 记录候选；优先选「没有空壳步骤」的那个
+        if(!best) best = cand;
+        if(!hasEmptyStep(obj)) return cand;
+      } catch(_){}
+    }
+    // 砍掉最后一个「可能是半截」的片段
+    const cut = cutLastFragment(str);
+    if(cut === null || cut === str) break;
+    str = cut;
+  }
+  return best;
+}
+
+/* 判断修复结果里是否残留「只有 key 没有 body」的空壳步骤 */
+function hasEmptyStep(obj){
+  if(!obj || !Array.isArray(obj.steps) || !obj.steps.length) return true;
+  return obj.steps.some(s => {
+    if(!s || typeof s !== 'object') return true;
+    const hasBody = s.body && String(s.body).trim();
+    return !hasBody;
+  });
+}
+
+/* 砍掉尾部悬空的片段（半截字符串 / 半个键值对 / 半个元素） */
+function cutLastFragment(s){
+  let t = s.replace(/\s+$/, '');
+  if(!t) return null;
+
+  // 尾部是未闭合的字符串字面量 → 砍掉从这个引号开始的内容
+  let inStr = false, esc = false, lastQuote = -1;
+  for(let i = 0; i < t.length; i++){
+    const c = t[i];
+    if(esc){ esc = false; continue; }
+    if(c === '\\'){ esc = true; continue; }
+    if(c === '"'){ inStr = !inStr; if(inStr) lastQuote = i; }
+  }
+  if(inStr && lastQuote >= 0) return t.slice(0, lastQuote);
+
+  // 尾部是 [, { 或 , 开头的悬空结构 → 砍掉最后一个逗号之后的内容
+  const lastComma = t.lastIndexOf(',');
+  const lastOpen  = Math.max(t.lastIndexOf('['), t.lastIndexOf('{'));
+  if(lastComma > lastOpen) return t.slice(0, lastComma);
+
+  // 尾部是不完整的值（例如 "answer": 或 "key"）→ 砍到上一个逗号或开括号
+  if(lastComma >= 0) return t.slice(0, lastComma);
+  if(lastOpen >= 0) return t.slice(0, lastOpen + 1);
+
+  return null;
+}
+
+/* 统计引号外部的括号，补全未闭合的部分 */
+function closeJSON(s){
+  let t = String(s).replace(/\s+$/, '');
+  // 去掉尾随逗号
+  t = t.replace(/,\s*$/, '');
+
+  const stack = [];
+  let inStr = false, esc = false;
+  for(let i = 0; i < t.length; i++){
+    const c = t[i];
+    if(esc){ esc = false; continue; }
+    if(c === '\\'){ esc = true; continue; }
+    if(c === '"'){ inStr = !inStr; continue; }
+    if(inStr) continue;
+    if(c === '{' || c === '[') stack.push(c);
+    else if(c === '}' || c === ']'){
+      const top = stack[stack.length - 1];
+      if((c === '}' && top === '{') || (c === ']' && top === '[')) stack.pop();
+    }
+  }
+  if(inStr) return null;                       // 字符串仍未闭合，交给上层处理
+  if(!stack.length) return null;
+
+  // 反向补全
+  let out = t;
+  for(let i = stack.length - 1; i >= 0; i--){
+    out += stack[i] === '{' ? '}' : ']';
+  }
+  return out;
+}
+
+/* ================================================================
+   配置持久化
+   很多 WebView / 打包应用（如 HTML Pocket）在沙箱或 null origin 下运行，
+   localStorage 会被清空甚至直接抛异常。因此这里做多层降级：
+     1. localStorage   —— 常规浏览器
+     2. IndexedDB      —— localStorage 被禁时的替代
+     3. Cookie         —— 再退一步（容量小，但通常不被清）
+     4. URL 参数       —— 彻底免疫：配置写进地址栏，刷新/换设备都在
+     5. 内存           —— 最次兜底，至少本次会话可用
+   另外提供导出/导入 JSON，方便手动备份。
+   ================================================================ */
+
+const CFG_KEYS = ['base','key','model','mode','maxTok','imgW','stream'];
+const IDB_NAME = 'aijj', IDB_STORE = 'cfg';
+const COOKIE_NAME = 'aijj_cfg';
+
+/* 探测各层可用性 */
+const Store = {
+  lsOk: null,
+  idbOk: null,
+
+  testLS(){
+    if(this.lsOk !== null) return this.lsOk;
+    try {
+      const k = '__aijj_t__';
+      localStorage.setItem(k, '1');
+      const v = localStorage.getItem(k);
+      localStorage.removeItem(k);
+      this.lsOk = (v === '1');
+    } catch(_){ this.lsOk = false; }
+    return this.lsOk;
+  },
+
+  /* ---- localStorage ---- */
+  lsGet(){
+    if(!this.testLS()) return null;
+    try { return localStorage.getItem(LS_KEY); } catch(_){ return null; }
+  },
+  lsSet(str){
+    if(!this.testLS()) return false;
+    try { localStorage.setItem(LS_KEY, str); return true; } catch(_){ return false; }
+  },
+  lsDel(){
+    try { localStorage.removeItem(LS_KEY); } catch(_){}
+  },
+
+  /* ---- Cookie（容量有限，只存精简后的配置）---- */
+  ckOk: null,
+  testCookie(){
+    if(this.ckOk !== null) return this.ckOk;
+    try {
+      const old = this.ckGet();
+      const probe = '__aijj_ck__';
+      document.cookie = probe + '=1; path=/; max-age=60';
+      const ok = document.cookie.indexOf(probe + '=') !== -1;
+      document.cookie = probe + '=; path=/; max-age=0';
+      // 探测后恢复原值（探测 cookie 与正式 cookie 不同名，无需恢复内容）
+      if(old && !this.ckGet()) this.ckSet(old);
+      this.ckOk = ok;
+    } catch(_){ this.ckOk = false; }
+    return this.ckOk;
+  },
+  ckSet(str){
+    try {
+      const enc = encodeURIComponent(str);
+      if(enc.length > 3800) return false;             // 超长就别硬塞
+      const secure = location.protocol === 'https:' ? '; Secure' : '';
+      document.cookie = COOKIE_NAME + '=' + enc + '; path=/; max-age=31536000; SameSite=Lax' + secure;
+      return document.cookie.indexOf(COOKIE_NAME + '=') !== -1;
+    } catch(_){ return false; }
+  },
+  ckGet(){
+    try {
+      const m = document.cookie.match(new RegExp('(?:^|;\\s*)' + COOKIE_NAME + '=([^;]*)'));
+      return m ? decodeURIComponent(m[1]) : null;
+    } catch(_){ return null; }
+  },
+  ckDel(){
+    try { document.cookie = COOKIE_NAME + '=; path=/; max-age=0'; } catch(_){}
+  },
+
+  /* ---- IndexedDB ---- */
+  idbOpen(){
+    return new Promise((resolve)=>{
+      try {
+        if(!window.indexedDB) return resolve(null);
+        const req = indexedDB.open(IDB_NAME, 1);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if(!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE);
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => resolve(null);
+        req.onblocked = () => resolve(null);
+        setTimeout(()=>resolve(null), 2500);
+      } catch(_){ resolve(null); }
+    });
+  },
+  async idbSet(str){
+    const db = await this.idbOpen();
+    if(!db) return false;
+    return new Promise((resolve)=>{
+      try {
+        const tx = db.transaction(IDB_STORE, 'readwrite');
+        tx.objectStore(IDB_STORE).put(str, LS_KEY);
+        tx.oncomplete = () => { this.idbOk = true; resolve(true); };
+        tx.onerror = () => resolve(false);
+        tx.onabort = () => resolve(false);
+      } catch(_){ resolve(false); }
+    });
+  },
+  async idbGet(){
+    const db = await this.idbOpen();
+    if(!db) return null;
+    return new Promise((resolve)=>{
+      try {
+        const tx = db.transaction(IDB_STORE, 'readonly');
+        const rq = tx.objectStore(IDB_STORE).get(LS_KEY);
+        rq.onsuccess = () => { this.idbOk = true; resolve(rq.result || null); };
+        rq.onerror = () => resolve(null);
+      } catch(_){ resolve(null); }
+    });
+  },
+  async idbDel(){
+    const db = await this.idbOpen();
+    if(!db) return;
+    try {
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).delete(LS_KEY);
+    } catch(_){}
+  },
+};
+
+/* ---- URL 参数：把配置编进 hash，彻底免疫存储丢失 ---- */
+function cfgToHash(){
+  try {
+    const slim = {};
+    CFG_KEYS.forEach(k => { if(S.cfg[k] !== undefined && S.cfg[k] !== '') slim[k] = S.cfg[k]; });
+    const json = JSON.stringify(slim);
+    // 用 encodeURIComponent + Base64 减少特殊字符
+    const b64 = btoa(unescape(encodeURIComponent(json)));
+    return b64.replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  } catch(_){ return ''; }
+}
+function hashToCfg(h){
+  try {
+    let b64 = String(h).replace(/-/g,'+').replace(/_/g,'/');
+    while(b64.length % 4) b64 += '=';
+    const json = decodeURIComponent(escape(atob(b64)));
+    const o = JSON.parse(json);
+    return (o && typeof o === 'object') ? o : null;
+  } catch(_){ return null; }
+}
+
+/* ---- 统一读写 ---- */
+async function persistCfg(){
+  const str = JSON.stringify(S.cfg);
+  const hits = [];
+
+  if(Store.lsSet(str)) hits.push('localStorage');
+  if(Store.ckSet(str)) hits.push('cookie');
+  if(await Store.idbSet(str)) hits.push('IndexedDB');
+
+  S.lastSave = hits;
+  return hits;
+}
+
+async function restoreCfg(){
+  // 1) URL 参数优先（用户显式分享/书签的配置最可信）
+  let from = '';
+  try {
+    const h = location.hash || '';
+    const m = h.match(/cfg=([A-Za-z0-9\-_]+)/);
+    if(m){
+      const o = hashToCfg(m[1]);
+      if(o){ Object.assign(S.cfg, o); from = 'URL 参数'; }
+    }
+  } catch(_){}
+
+  // 2) localStorage
+  if(!from){
+    const raw = Store.lsGet();
+    if(raw){ try { Object.assign(S.cfg, JSON.parse(raw)); from = 'localStorage'; } catch(_){} }
+  }
+
+  // 3) IndexedDB
+  if(!from){
+    const raw = await Store.idbGet();
+    if(raw){ try { Object.assign(S.cfg, JSON.parse(raw)); from = 'IndexedDB'; } catch(_){} }
+  }
+
+  // 4) Cookie
+  if(!from){
+    const raw = Store.ckGet();
+    if(raw){ try { Object.assign(S.cfg, JSON.parse(raw)); from = 'cookie'; } catch(_){} }
+  }
+
+  return from;
+}
+
+/* 把配置写进地址栏（可收藏/分享） */
+function cfgToURL(withKey){
+  const snap = {};
+  CFG_KEYS.forEach(k => { snap[k] = S.cfg[k]; });
+  if(!withKey) delete snap.key;                 // 默认不带 Key，避免误分享
+  const backup = {};
+  CFG_KEYS.forEach(k => { backup[k] = S.cfg[k]; });
+  CFG_KEYS.forEach(k => { if(snap[k] === undefined) S.cfg[k] = backup[k]; });
+
+  const json = JSON.stringify(snap);
+  const b64 = btoa(unescape(encodeURIComponent(json)))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  const base = location.href.split('#')[0];
+  return base + '#cfg=' + b64;
+}
+
+/* 导出为 JSON 文件 */
+function exportCfg(){
+  const data = {
+    _app: 'AI精讲', _ver: 1,
+    _time: new Date().toISOString(),
+    config: S.cfg,
+  };
+  try {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ai精讲-配置.json';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 500);
+    return true;
+  } catch(_){
+    // 退路：弹出可复制的文本
+    return false;
+  }
+}
+
+/* 导入 JSON 文件 */
+function importCfg(file){
+  return new Promise((resolve, reject)=>{
+    try {
+      const fr = new FileReader();
+      fr.onload = () => {
+        try {
+          const o = JSON.parse(fr.result);
+          const cfg = o && o.config ? o.config : o;
+          if(!cfg || typeof cfg !== 'object') throw new Error('文件内容不是配置对象');
+          CFG_KEYS.forEach(k => { if(cfg[k] !== undefined) S.cfg[k] = cfg[k]; });
+          resolve(true);
+        } catch(e){ reject(e); }
+      };
+      fr.onerror = () => reject(new Error('读取文件失败'));
+      fr.readAsText(file);
+    } catch(e){ reject(e); }
+  });
+}
+
+/* 生成给用户看的存储状态说明 */
+function storageHint(){
+  const ls = Store.testLS();
+  const ck = Store.testCookie();
+  const parts = [];
+  parts.push(ls ? 'localStorage ✅' : 'localStorage ❌');
+  if(!ls){
+    parts.push(ck ? 'cookie ✅' : 'cookie ❌');
+    parts.push('已自动降级保存');
+  }
+  return parts.join('　');
+}
+
+/* 刷新配置面板顶部的存储状态显示 */
+function refreshStoreState(){
+  const el = $('storeState');
+  const note = $('storeNote');
+  if(!el) return;
+  const ls = Store.testLS();
+  const ck = Store.testCookie();
+  const src = S.loadedFrom ? ('当前配置来自 ' + S.loadedFrom) : '';
+
+  if(ls){
+    el.textContent = 'localStorage 可用' + (src ? '　·　' + src : '');
+    el.style.color = '';
+    if(note) note.textContent = '设置已保存在浏览器本地存储中，刷新页面不会丢失。换设备或清了浏览器数据时需要重新填写，可用下面的方式备份。';
+  } else {
+    el.textContent = (ck ? 'cookie 可用' : '无持久化存储') + '　·　' + (src || '本次未加载到已存配置');
+    el.style.color = '#f2bd63';
+    if(note) note.innerHTML =
+      '⚠️ 当前环境<b>不支持或已禁用 localStorage</b>（打包应用、隐私模式、file:// 或沙箱页面常见），' +
+      '所以刷新后设置可能丢失。已自动改用 ' + (ck ? '<b>cookie</b>' : '<b>内存</b>') + ' 保存，' +
+      '但最稳妥的办法是点「<b>生成配置链接</b>」把设置写进网址并收藏该网址。';
+  }
+}
+
+/* ---------------- 配置存取 ---------------- */
+function fillCfgForm(){
+  $('cfgBase').value   = S.cfg.base || '';
+  $('cfgKey').value    = S.cfg.key || '';
+  $('cfgModel').value  = S.cfg.model || '';
+  $('cfgMode').value   = S.cfg.mode || 'auto';
+  $('cfgMaxTok').value = S.cfg.maxTok || 8192;
+  $('cfgImgW').value   = S.cfg.imgW || 1280;
+  $('cfgStream').checked = !!S.cfg.stream;
+}
+
+async function loadCfg(){
+  const from = await restoreCfg();
+  fillCfgForm();
+  S.loadedFrom = from || '';
+
+  // 没配置过就自动展开面板
+  if(!S.cfg.base || !S.cfg.key || !S.cfg.model){
+    $('cfgPanel').style.display = 'block';
+  }
+}
+
+async function saveCfg(){
+  S.cfg.base   = $('cfgBase').value.trim().replace(/\/+$/, '');
+  S.cfg.key    = $('cfgKey').value.trim();
+  S.cfg.model  = $('cfgModel').value.trim();
+  S.cfg.mode   = $('cfgMode').value;
+  S.cfg.maxTok = parseInt($('cfgMaxTok').value, 10) || 8192;
+  S.cfg.imgW   = parseInt($('cfgImgW').value, 10) || 1280;
+  S.cfg.stream = $('cfgStream').checked;
+  return await persistCfg();
+}
+
+function cfgReady(){
+  return !!(S.cfg.base && S.cfg.key && S.cfg.model);
+}
+
+function endpoint(){
+  const b = S.cfg.base.replace(/\/+$/, '');
+  if(/\/chat\/completions$/.test(b)) return b;
+  return b + '/chat/completions';
+}
+
+/* /v1/models 地址：把末尾的 /chat/completions 去掉后换成 /models */
+function modelsEndpoint(){
+  const b = S.cfg.base.replace(/\/+$/, '').replace(/\/chat\/completions$/, '');
+  if(/\/models$/.test(b)) return b;
+  return b + '/models';
+}
+
+/* 判断模型是否可能是视觉模型（用于排序与标记） */
+function looksVision(id){
+  return /(vl|vision|4o|4\.1|4\.5|omni|gemini|claude|glm-4v|glm-4\.\d+v|llava|pixtral|qwen.*vl|internvl|gpt-5|o[34]|multimodal|mm)/i.test(id);
+}
+/* 明显是嵌入/语音/图像生成的模型，视觉解题用不上 */
+function looksUnfit(id){
+  return /(embedding|embed|rerank|whisper|tts|audio|speech|moderation|dall-e|image-gen|stable-diffusion|flux|sd-|cogview|wanx|wan-|video|asr|ocr-only)/i.test(id);
+}
+
+/* 拉取可用模型列表 */
+async function detectModels(){
+  S.cfg.base = $('cfgBase').value.trim().replace(/\/+$/, '');
+  S.cfg.key  = $('cfgKey').value.trim();
+  if(!S.cfg.base){ setStatus('cfgStatus','请先填写接口地址','err'); return; }
+  if(!S.cfg.key){ setStatus('cfgStatus','请先填写 API Key','err'); return; }
+
+  const btn = $('btnDetect');
+  btn.disabled = true; btn.textContent = '探测中…';
+  setStatus('cfgStatus', '正在请求 ' + modelsEndpoint() + ' …', 'info');
+
+  const ctrl = new AbortController();
+  const tm = setTimeout(()=>ctrl.abort(), 15000);
+
+  try {
+    const res = await fetch(modelsEndpoint(), {
+      method:'GET',
+      headers:{ 'Authorization':'Bearer ' + S.cfg.key },
+      signal: ctrl.signal,
+    });
+    clearTimeout(tm);
+
+    if(!res.ok){
+      let d = '';
+      try { const j = await res.json(); d = (j.error && (j.error.message || j.error.code)) || ''; } catch(_){}
+      throw new Error(`HTTP ${res.status}${d ? ' — ' + d : ''}`);
+    }
+
+    const data = await res.json();
+    const list = normalizeModels(data);
+
+    if(!list.length){
+      setStatus('cfgStatus', '接口返回成功，但没有解析出模型列表。该服务可能未实现 /models。请手动填写模型名称。', 'err');
+      $('modelList').style.display = 'none';
+      return;
+    }
+
+    S.allModels = list;
+    renderModelList(list, '');
+    setStatus('cfgStatus', `探测到 ${list.length} 个模型。点击即可选用（已按是否可能是视觉模型排序）。`, 'ok');
+
+  } catch(err){
+    clearTimeout(tm);
+    const m = String(err && err.message || err);
+    if(err.name === 'AbortError'){
+      setStatus('cfgStatus', '探测超时（15 秒）。该接口可能不支持 /models，请手动填写模型名称。', 'err');
+    } else if(/Failed to fetch|NetworkError|Load failed/i.test(m)){
+      setStatus('cfgStatus', '无法访问 /models。可能是：\n1) 该服务未实现此接口\n2) 浏览器跨域被拦截（CORS）\n3) 地址填写有误\n\n可先手动填写模型名称继续使用。\n\n原始信息：' + m, 'err');
+    } else {
+      setStatus('cfgStatus', '探测失败：' + m + '\n\n可手动填写模型名称继续使用。', 'err');
+    }
+    $('modelList').style.display = 'none';
+  } finally {
+    btn.disabled = false; btn.textContent = '探测模型';
+  }
+}
+
+/* 把各家五花八门的返回归一成 [{id, owner}] */
+function normalizeModels(data){
+  let arr = [];
+  if(Array.isArray(data)) arr = data;
+  else if(data && Array.isArray(data.data)) arr = data.data;
+  else if(data && Array.isArray(data.models)) arr = data.models;
+  else if(data && data.data && Array.isArray(data.data.models)) arr = data.data.models;
+  else if(data && data.output && Array.isArray(data.output.models)) arr = data.output.models;
+  else if(data && typeof data === 'object'){
+    // 兜底：找第一个「元素是对象且带 id/name」的数组字段
+    for(const k of Object.keys(data)){
+      const v = data[k];
+      if(Array.isArray(v) && v.length && typeof v[0] === 'object' &&
+         (v[0].id || v[0].name || v[0].model)){
+        arr = v; break;
+      }
+    }
+  }
+
+  const seen = new Set();
+  const out = [];
+  for(const it of arr){
+    let id = '';
+    if(typeof it === 'string') id = it;
+    else if(it && typeof it === 'object'){
+      id = it.id || it.name || it.model || it.model_id || '';
+    }
+    id = String(id || '').trim();
+    if(!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push({ id, owner: (it && (it.owned_by || it.owner || it.provider)) || '' });
+  }
+
+  // 排序：疑似视觉模型优先，明确不合适的沉底，同组按字母序
+  out.sort((a,b)=>{
+    const av = looksVision(a.id) && !looksUnfit(a.id) ? 0 : (looksUnfit(a.id) ? 2 : 1);
+    const bv = looksVision(b.id) && !looksUnfit(b.id) ? 0 : (looksUnfit(b.id) ? 2 : 1);
+    if(av !== bv) return av - bv;
+    return a.id.localeCompare(b.id);
+  });
+  return out;
+}
+
+/* 渲染模型列表 */
+function renderModelList(list, filter){
+  const box = $('modelList');
+  const kw = (filter || '').trim().toLowerCase();
+  const shown = kw ? list.filter(m => m.id.toLowerCase().includes(kw)) : list;
+
+  box.style.display = 'block';
+  if(!shown.length){
+    box.innerHTML = `<div class="mlist"><div class="mempty">没有匹配「${esc(filter)}」的模型</div></div>`;
+    return;
+  }
+
+  const cur = $('cfgModel').value.trim();
+  const items = shown.map(m=>{
+    const isV = looksVision(m.id) && !looksUnfit(m.id);
+    return `<div class="mitem ${m.id===cur?'on':''}" data-id="${esc(m.id)}">
+      <span class="mid">${esc(m.id)}</span>
+      ${isV ? '<span class="vtag">可能是视觉</span>' : ''}
+      ${m.owner ? `<span class="otag">${esc(String(m.owner).slice(0,14))}</span>` : ''}
+    </div>`;
+  }).join('');
+
+  box.innerHTML = `
+    <input class="msearch" id="mSearch" placeholder="筛选模型名…（共 ${list.length} 个，显示 ${shown.length} 个）" value="${esc(filter||'')}">
+    <div class="mlist">${items}</div>
+    <div class="mfoot">
+      <span class="sw" id="mOnlyV">仅看疑似视觉模型</span>
+      <span class="sw" id="mClose">收起</span>
+      <span style="margin-left:auto">点选即填入模型名</span>
+    </div>`;
+
+  // 点选
+  box.querySelectorAll('.mitem').forEach(el=>{
+    el.onclick = ()=>{
+      $('cfgModel').value = el.dataset.id;
+      box.querySelectorAll('.mitem').forEach(x=>x.classList.remove('on'));
+      el.classList.add('on');
+      toast('已选择 ' + el.dataset.id);
+    };
+  });
+
+  const s = $('mSearch');
+  if(s){
+    s.oninput = ()=>renderModelList(S.allModels, s.value);
+    if(!filter) s.focus();
+  }
+  const ov = $('mOnlyV');
+  if(ov) ov.onclick = ()=>{
+    const vs = S.allModels.filter(m => looksVision(m.id) && !looksUnfit(m.id));
+    if(!vs.length){ toast('没有识别出明显的视觉模型，请手动确认'); return; }
+    renderModelList(vs, '');
+  };
+  const cl = $('mClose');
+  if(cl) cl.onclick = ()=>{ box.style.display = 'none'; };
+}
+
+/* ---------------- 图片处理 ---------------- */
+function readFile(file){
+  return new Promise((res, rej)=>{
+    const fr = new FileReader();
+    fr.onload = () => res(fr.result);
+    fr.onerror = () => rej(new Error('读取文件失败'));
+    fr.readAsDataURL(file);
+  });
+}
+
+function loadImage(src){
+  return new Promise((res, rej)=>{
+    const im = new Image();
+    im.onload = () => res(im);
+    im.onerror = () => rej(new Error('图片解码失败'));
+    im.src = src;
+  });
+}
+
+/* 压缩到指定宽度，输出 JPEG dataURL */
+async function compress(dataUrl, maxW){
+  const im = await loadImage(dataUrl);
+  let { width:w, height:h } = im;
+  if(w <= maxW) {
+    // 已经够小，但统一转 JPEG 以减小体积
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    c.getContext('2d').drawImage(im, 0, 0);
+    return { dataUrl: c.toDataURL('image/jpeg', 0.92), w, h };
+  }
+  const scale = maxW / w;
+  const nw = Math.round(w * scale), nh = Math.round(h * scale);
+  const c = document.createElement('canvas');
+  c.width = nw; c.height = nh;
+  const ctx = c.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(im, 0, 0, nw, nh);
+  return { dataUrl: c.toDataURL('image/jpeg', 0.9), w:nw, h:nh };
+}
+
+async function addImage(file, slotIdx){
+  if(!file.type.startsWith('image/')) { toast('请选择图片文件'); return; }
+  if(file.size > 25 * 1024 * 1024){ toast('图片过大（>25MB），请压缩后再试'); return; }
+
+  setStatus('imgStatus', '正在处理图片…', 'info');
+  try {
+    const raw = await readFile(file);
+    const out = await compress(raw, S.cfg.imgW);
+    S.images[slotIdx] = out;
+    renderSlot(slotIdx);
+    setStatus('imgStatus', '', null);
+    updateCount();
+  } catch(e){
+    setStatus('imgStatus', '图片处理失败：' + e.message, 'err');
+  }
+}
+
+function renderSlot(i){
+  const el = $('slot' + i);
+  const img = S.images[i];
+  el.innerHTML = '';
+  if(img){
+    el.classList.add('filled');
+    const tag = document.createElement('div');
+    tag.className = 'tag';
+    tag.textContent = i === 0 ? '第 1 页' : '第 2 页';
+    const im = document.createElement('img');
+    im.src = img.dataUrl;
+    im.alt = '题目图片' + (i+1);
+    const del = document.createElement('button');
+    del.className = 'del';
+    del.textContent = '✕';
+    del.title = '移除';
+    del.onclick = (ev)=>{ ev.stopPropagation(); removeImage(i); };
+    el.append(tag, im, del);
+  } else {
+    el.classList.remove('filled');
+    const ph = document.createElement('div');
+    ph.className = 'ph';
+    ph.innerHTML = i === 0
+      ? '<div class="big">📷</div><div>第 1 页 / 主图</div>'
+      : '<div class="big">＋</div><div>第 2 页（跨页可选）</div>';
+    el.appendChild(ph);
+  }
+  el.onclick = img ? null : (()=>openPicker(i));
+}
+
+function removeImage(i){
+  S.images[i] = null;
+  // 若移除的是第 1 张而第 2 张存在，前移补位
+  if(i === 0 && S.images[1]){ S.images[0] = S.images[1]; S.images[1] = null; renderSlot(0); }
+  renderSlot(i);
+  updateCount();
+}
+
+function updateCount(){
+  const n = S.images.filter(Boolean).length;
+  $('cntBadge').textContent = n + ' / ' + MAX_IMAGES;
+  $('btnRetry').disabled = !(n > 0) || S.busy;
+}
+
+/* 打开选择器：优先空槽；都满了则替换第 1 张 */
+function openPicker(i){
+  const idx = (S.images[i] ? 0 : i);
+  S.slotTarget = idx;
+  $('btnGo').dataset.pending = '1';
+  toast(idx === 0 ? '请拍照或选择第 1 页' : '请拍照或选择第 2 页', 1500);
+  // 让用户选择拍照还是相册 —— 用底部两个按钮更直观，这里直接触发相册
+  $('fileAlbum').click();
+}
+
+function detectSlot(){
+  if(!S.images[0]) return 0;
+  if(!S.images[1]) return 1;
+  return 0;
+}
+
+/* ---------------- 提示词 ---------------- */
+function buildSystemPrompt(){
+  return [
+    '你是一位耐心、专业的中学与小学老师，擅长把一道题讲透。',
+    '你的任务是：根据用户提供的题目图片，把这道题拆成若干小步，带学生一步一步走完。',
+    '',
+    '【讲解必须遵循的结构】按下面顺序组织，每步都要有实质内容：',
+    '1. understand 理解题意 —— 复述题目给了什么条件、要求什么，把关键条件标记出来',
+    '2. points 知识点拆分 —— 说明这道题考哪几个知识点，把条件与知识点对应起来',
+    '3. think 解题思路 —— 给出整体思路（为什么这么做），不要直接跳到计算',
+    '4. solve 具体解答 —— 见下方「长解答必须拆分」',
+    '5. trap 易错提醒 —— 指出本题最容易错的地方和常见陷阱',
+    '6. method 方法总结 —— 总结这类题的通用解法',
+    '7. review 回顾知识点 —— 用一两句话收尾',
+    '',
+    '【长解答必须拆分 —— 重要】',
+    '如果「具体解答」的内容较长（超过约 150 字，或包含 3 步以上推导），**必须**把它拆成多个连续的小步骤，',
+    '而不是塞进一个步骤里。每个小步骤只推进一个推理动作，让学生能一步一步跟上来。',
+    '拆分方式：把 solve 这一步的 body 留成一句总纲（例如"我们分 3 小步来解"），',
+    '然后紧接着放若干子步骤，每步的 key 依次为 solve1、solve2、solve3…，title 用具体动作命名',
+    '（例如"第一小步：移项"、"第二小步：配方"），而不是笼统的"第一步""第二步"。',
+    '每个子步骤结尾可以用一句话小结当前结论，再进入下一小步。',
+    '如果解答本来就很短（一步就能算完），就不要强行拆分，直接用 solve 一步讲完。',
+    '',
+    '【互动测验 —— 重要】',
+    '测验的目的是让学生保持投入、及时发现没听懂的地方，**不是考试**。因此：',
+    '- 测验可以穿插在**任何**合适的位置，不必只放在开头。',
+    '  好的位置例如：讲完一个关键概念后（检查是否理解）、进入下一步推导前（确认前提）、',
+    '  某个容易错的转折点前（引导思考）、以及全部讲完后（综合检验）。',
+    '  建议整道题安排 2~4 个测验，分布在不同位置。',
+    '- **以多选一（choice）为主**，因为它负担最轻、点一下就能答。',
+    '  只有当答案确实无法用选项穷举时（如需要写出一个算式、一段理由），才用其他类型。',
+    '  大致比例：多选一占多数，填空/提问合计不超过一半。',
+    '',
+    '测验有三种类型，用 type 字段区分：',
+    '  • "choice" —— 多选一。必须给出 options（3~4 个选项），并给出 answer（正确选项的下标，从 0 开始）。',
+    '     干扰项要**像真的**（例如常见的计算失误、符号搞反、漏掉条件），不要一眼就能排除。',
+    '  • "blank" —— 短文本填空。适合答案是一个词、一个数、一个式子。',
+    '     q 里用下划线 ____ 标出要填的位置。同时给 answer 作为参考答案。',
+    '  • "ask" —— 互动提问。适合需要学生写出思路、理由或过程的长回答。给 answer 作为参考要点。',
+    '',
+    '每个测验放在所属步骤的 quiz 字段里，形如：',
+    '  { "type":"choice", "q":"…", "options":["…","…","…"], "answer":1, "why":"为什么这个对" }',
+    '  { "type":"blank",  "q":"所以 $x=$ ____", "answer":"3", "why":"…" }',
+    '  { "type":"ask",    "q":"说一说你为什么想到要配方？", "answer":"参考要点…", "why":"…" }',
+    'why 字段写简短解析，学生答完后展示。',
+    '',
+    '【quizAt 字段】测验挂在某一小步上时，直接写在该步的 quiz 里；',
+    '如果某个测验不属于任何具体步骤（例如全题讲完后的综合检验），',
+    '就放到步骤数组之外的 "finalQuiz" 字段里。',
+    '',
+    '另外，在 steps 之外再单独给出一段"知识点增强小课堂"（extend 字段）：',
+    '针对本题涉及的核心知识点做扩展讲解，说明它的来龙去脉与适用条件，并举一个举一反三的例子。',
+    '',
+    '【写作要求】',
+    '- 用中文，语气像面对面讲课，可以说"我们来看""注意这里""这一步很关键"',
+    '- 数学公式用 LaTeX：行内用 $...$，独立公式用 $$...$$',
+    '- **所有**数学符号、变量、数字表达式都必须放进 $...$ 里，',
+    '  不要写 x^2、1/2、f(x)、a>1/2 这种裸写法，要写成 $x^2$、$\\frac{1}{2}$、$f(x)$、$a>\\frac{1}{2}$。',
+    '- recognized 字段尤其重要：它是钉在页面顶部的题目原文，必须**逐字还原**题目，',
+    '  并把其中所有数学内容都用 $...$ 包好。例如：',
+    '  "6. (2022乙卷理) 已知函数 $f(x)=\\ln(1+x)+axe^{-x}$。\\n(1) 当 $a=1$ 时，求曲线 $y=f(x)$ 在点 $(0,f(0))$ 处的切线方程；"',
+    '- 关键结论、关键条件用 **加粗** 标出，方便在板书上高亮',
+    '- 如果图片里有图形（几何图、数轴、表格），要描述清楚你看到的内容',
+    '- 如果图片中的题目文字有看不清的地方，明确说明你的推测，不要假装看清了',
+    '- 如果两张图是同一道题的跨页内容，要合并理解成一道完整题目',
+    '',
+    '【输出格式】必须只输出一个 JSON 对象，不要有任何额外文字或 markdown 围栏。格式如下：',
+    '{',
+    '  "subject": "数学",',
+    '  "grade": "初中二年级（推测）",',
+    '  "title": "用配方法解一元二次方程",',
+    '  "recognized": "对图片中题目文字的完整转述",',
+    '  "steps": [',
+    '    { "key": "understand", "title": "理解题意", "body": "markdown 内容…",',
+    '      "quiz": { "type":"choice", "q":"…", "options":["A…","B…","C…"], "answer":0, "why":"…" } },',
+    '    { "key": "points", "title": "知识点拆分", "body": "…" },',
+    '    { "key": "think",  "title": "解题思路", "body": "…",',
+    '      "quiz": { "type":"ask", "q":"…", "answer":"参考要点…", "why":"…" } },',
+    '    { "key": "solve",  "title": "具体解答", "body": "我们分 3 小步来解。" },',
+    '    { "key": "solve1", "title": "第一小步：移项", "body": "…",',
+    '      "quiz": { "type":"blank", "q":"移项后得到 ____", "answer":"-5", "why":"…" } },',
+    '    { "key": "solve2", "title": "第二小步：配方", "body": "…" },',
+    '    { "key": "solve3", "title": "第三小步：开方求解", "body": "…" },',
+    '    { "key": "trap",   "title": "易错提醒", "body": "…" },',
+    '    { "key": "method", "title": "方法总结", "body": "…" },',
+    '    { "key": "review", "title": "回顾知识点", "body": "…" }',
+    '  ],',
+    '  "finalQuiz": { "type":"choice", "q":"综合检验…", "options":["…","…","…"], "answer":2, "why":"…" },',
+    '  "extend": {',
+    '    "title": "知识点增强小课堂",',
+    '    "body": "markdown 内容…"',
+    '  }',
+    '}'
+  ].join('\n');
+}
+
+/* 判卷专用提示词 */
+function buildGradePrompt(){
+  return [
+    '你是一位老师，正在批改学生对一道题中某个小测验的回答。',
+    '你会看到：题目背景、测验的问题、参考答案，以及学生的回答。',
+    '',
+    '请判断学生的回答是否正确，并给出一句到两句话的反馈。要求：',
+    '- 判断要宽松务实：意思对了就算对，不必逐字一致；表述不同但思路正确应判为正确。',
+    '- 部分正确（思路对但有疏漏）判为 partial，并指出缺了什么。',
+    '- 学生说不会、答非所问或明显错误，判为 wrong，并给出正确思路的关键一句，不要长篇大论。',
+    '- 反馈要鼓励为主，先肯定对的地方，再指出问题。不要重复整道题的讲解。',
+    '- 用中文。公式用 LaTeX 行内 $...$。',
+    '',
+    '只输出一个 JSON 对象，不要任何额外文字或 markdown 围栏：',
+    '{ "verdict": "correct" | "partial" | "wrong", "feedback": "给学生的反馈（1~3 句）" }'
+  ].join('\n');
+}
+
+/* ---------------- 轻量 Markdown 渲染 ---------------- */
+function md(src){
+  if(!src) return '';
+  let t = String(src);
+
+  // 代码块先占位，避免被后续规则破坏
+  const blocks = [];
+  t = t.replace(/```([\s\S]*?)```/g, (_, code)=>{
+    blocks.push('<pre>' + esc(code.replace(/^\n+|\n+$/g, '')) + '</pre>');
+    return '\u0000B' + (blocks.length - 1) + '\u0000';
+  });
+
+  // 行内代码
+  const inl = [];
+  t = t.replace(/`([^`\n]+)`/g, (_, c)=>{
+    inl.push('<code>' + esc(c) + '</code>');
+    return '\u0000I' + (inl.length - 1) + '\u0000';
+  });
+
+  // 转义
+  t = esc(t);
+
+  // 表格
+  t = t.replace(/(^\|.+\|\s*$\n^\|[\s:|-]+\|\s*$\n(?:^\|.*\|\s*$\n?)*)/gm, (m)=>{
+    const rows = m.trim().split('\n').filter(Boolean);
+    if(rows.length < 2) return m;
+    const cells = r => r.replace(/^\||\|$/g, '').split('|').map(s=>s.trim());
+    const head = cells(rows[0]);
+    let html = '<table><thead><tr>' + head.map(h=>'<th>'+h+'</th>').join('') + '</tr></thead><tbody>';
+    for(let i=2;i<rows.length;i++){
+      html += '<tr>' + cells(rows[i]).map(c=>'<td>'+c+'</td>').join('') + '</tr>';
+    }
+    return html + '</tbody></table>\n';
+  });
+
+  // 标题
+  t = t.replace(/^######\s+(.+)$/gm,'<h6>$1</h6>')
+       .replace(/^#####\s+(.+)$/gm,'<h5>$1</h5>')
+       .replace(/^####\s+(.+)$/gm,'<h4>$1</h4>')
+       .replace(/^###\s+(.+)$/gm,'<h4>$1</h4>')
+       .replace(/^##\s+(.+)$/gm,'<h4>$1</h4>')
+       .replace(/^#\s+(.+)$/gm,'<h4>$1</h4>');
+
+  // 加粗 —— 在板书里渲染成高亮圈注
+  t = t.replace(/\*\*([^*\n]+)\*\*/g, '<span class="mk">$1</span>');
+  t = t.replace(/__([^_\n]+)__/g, '<span class="mk">$1</span>');
+
+  // 斜体
+  t = t.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>');
+
+  // 列表
+  t = t.replace(/^\s*[-*]\s+(.+)$/gm, '<li>$1</li>');
+  t = t.replace(/^\s*\d+[.)]\s+(.+)$/gm, '<li>$1</li>');
+  t = t.replace(/(<li>[\s\S]*?<\/li>)(?!\s*<li>)/g, '<ul>$1</ul>');
+
+  // 段落
+  t = t.split(/\n{2,}/).map(p=>{
+    p = p.trim();
+    if(!p) return '';
+    if(/^<(ul|ol|pre|table|h[1-6]|blockquote|\u0000B)/.test(p)) return p;
+    return '<p>' + p.replace(/\n/g,'<br>') + '</p>';
+  }).join('');
+
+  // 还原占位
+  t = t.replace(/\u0000I(\d+)\u0000/g, (_, i)=> inl[+i] || '');
+  t = t.replace(/\u0000B(\d+)\u0000/g, (_, i)=> blocks[+i] || '');
+  return t;
+}
+
+/* 把 LaTeX 公式交给 MathJax 渲染（若加载成功）
+   渲染完成后再处理溢出的独立公式：套一层可横向滚动的容器 */
+function typeset(el){
+  if(!el) return;
+  if(window.MathJax && window.MathJax.typesetPromise){
+    try {
+      window.MathJax.typesetPromise([el])
+        .then(()=>fixWideMath(el))
+        .catch(()=>{});
+    } catch(_){}
+  } else {
+    // MathJax 还没加载好：稍后重试一次
+    let tries = 0;
+    const tm = setInterval(()=>{
+      tries++;
+      if(window.MathJax && window.MathJax.typesetPromise){
+        clearInterval(tm);
+        try {
+          window.MathJax.typesetPromise([el]).then(()=>fixWideMath(el)).catch(()=>{});
+        } catch(_){}
+      } else if(tries > 40){
+        clearInterval(tm);
+      }
+    }, 250);
+  }
+}
+
+/* 独立公式若比容器宽，包一层滚动容器，避免被裁掉 */
+function fixWideMath(el){
+  if(!el || !el.querySelectorAll) return;
+  const nodes = el.querySelectorAll('mjx-container[display="true"]');
+  nodes.forEach(node=>{
+    // 已经处理过
+    if(node.parentNode && node.parentNode.classList &&
+       node.parentNode.classList.contains('mathscroll')) return;
+    const w = node.scrollWidth || node.getBoundingClientRect().width;
+    const pw = (node.parentNode && node.parentNode.clientWidth) || 0;
+    // 只有明显超宽才包（留 2px 余量），避免无谓地加滚动条
+    if(pw && w > pw + 2){
+      const wrap = document.createElement('div');
+      wrap.className = 'mathscroll';
+      node.parentNode.insertBefore(wrap, node);
+      wrap.appendChild(node);
+    }
+  });
+}
+
+/* ---------------- 构建消息 ---------------- */
+function userContent(images, note, extraInstructions){
+  const parts = [];
+  const n = images.length;
+
+  let intro = n > 1
+    ? `我拍了 ${n} 张图片，它们可能是同一道题的跨页内容（第 1 张在前，第 2 张在后），请合并理解成一道完整题目，然后讲解。`
+    : '这是一道题的图片，请讲解。';
+
+  if(extraInstructions) intro += '\n' + extraInstructions;
+  intro += '\n\n请严格按系统提示的结构讲解，并以指定的 JSON 格式输出。';
+  parts.push({ type:'text', text: intro });
+
+  images.forEach((im, i)=>{
+    if(n > 1) parts.push({ type:'text', text:`【第 ${i+1} 张图】` });
+    parts.push({ type:'image_url', image_url:{ url: im.dataUrl } });
+  });
+
+  if(note && note.trim()){
+    parts.push({ type:'text', text:`补充说明：${note.trim()}` });
+  }
+  return parts;
+}
+
+/* ---------------- 调用 API（非流式） ---------------- */
+async function callAPI(messages, signal){
+  const body = {
+    model: S.cfg.model,
+    messages,
+    max_tokens: S.cfg.maxTok,
+    temperature: 0.3,
+  };
+  const res = await fetch(endpoint(), {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'Authorization':'Bearer ' + S.cfg.key,
+    },
+    body: JSON.stringify(body),
+    signal,
+  });
+
+  if(!res.ok){
+    let detail = '';
+    try {
+      const j = await res.json();
+      detail = j.error && (j.error.message || j.error.code) ? (j.error.message || j.error.code) : JSON.stringify(j).slice(0,400);
+    } catch(_){
+      try { detail = (await res.text()).slice(0,400); } catch(__){}
+    }
+    const e = new Error(`HTTP ${res.status} ${res.statusText}${detail ? ' — ' + detail : ''}`);
+    e.status = res.status;
+    throw e;
+  }
+
+  const data = await res.json();
+  const ch = data && data.choices && data.choices[0];
+  const msg = ch && ch.message;
+  const content = msg ? (msg.content || '') : '';
+  const finish = (ch && ch.finish_reason) || '';
+  if(!content) throw new Error('接口返回内容为空（请确认所选模型支持图片输入）');
+  return { content, usage: data.usage || null, finishReason: finish };
+}
+
+/* ---------------- 调用 API（流式） ---------------- */
+async function callAPIStream(messages, onDelta, signal){
+  const body = {
+    model: S.cfg.model,
+    messages,
+    max_tokens: S.cfg.maxTok,
+    temperature: 0.3,
+    stream: true,
+  };
+  const res = await fetch(endpoint(), {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'Authorization':'Bearer ' + S.cfg.key,
+      'Accept':'text/event-stream',
+    },
+    body: JSON.stringify(body),
+    signal,
+  });
+
+  if(!res.ok){
+    let detail = '';
+    try {
+      const j = await res.json();
+      detail = j.error && j.error.message ? j.error.message : JSON.stringify(j).slice(0,400);
+    } catch(_){
+      try { detail = (await res.text()).slice(0,400); } catch(__){}
+    }
+    const e = new Error(`HTTP ${res.status} ${res.statusText}${detail ? ' — ' + detail : ''}`);
+    e.status = res.status;
+    throw e;
+  }
+
+  const reader = res.body.getReader();
+  const dec = new TextDecoder('utf-8');
+  let buf = '', full = '', finish = '';
+
+  while(true){
+    const { done, value } = await reader.read();
+    if(done) break;
+    buf += dec.decode(value, { stream:true });
+
+    // 按 SSE 事件切分
+    let idx;
+    while((idx = buf.indexOf('\n')) !== -1){
+      const line = buf.slice(0, idx).trim();
+      buf = buf.slice(idx + 1);
+      if(!line || !line.startsWith('data:')) continue;
+      const payload = line.slice(5).trim();
+      if(payload === '[DONE]') continue;
+      try {
+        const j = JSON.parse(payload);
+        const c0 = j.choices && j.choices[0];
+        if(c0 && c0.finish_reason) finish = c0.finish_reason;
+        const d = c0 && c0.delta;
+        const piece = d && typeof d.content === 'string' ? d.content : '';
+        if(piece){ full += piece; onDelta && onDelta(piece, full); }
+      } catch(_){ /* 忽略非法分片 */ }
+    }
+  }
+  if(!full) throw new Error('流式返回为空（请确认模型支持图片输入）');
+  return { content: full, usage: null, finishReason: finish };
+}
+
+/* ---------------- 主流程 ---------------- */
+let ABORT = null;
+
+function collectImages(){
+  return S.images.filter(Boolean);
+}
+
+async function startExplain(){
+  if(S.busy) return;
+
+  if(!cfgReady()){
+    $('cfgPanel').style.display = 'block';
+    $('cfgPanel').scrollIntoView({ behavior:'smooth', block:'start' });
+    setStatus('cfgStatus', '请先填写并保存 API 设置', 'err');
+    return;
+  }
+  const images = collectImages();
+  if(images.length === 0){ toast('请先拍照或上传题目图片'); return; }
+
+  S.busy = true;
+  $('btnGo').disabled = true;
+  $('btnRetry').disabled = true;
+  $('btnGo').textContent = '讲解中…';
+
+  // 进入讲解态：隐藏上传区，钉顶栏与底部输入就位
+  enterExplainMode();
+  $('askInput').disabled = true;
+  $('btnAsk').disabled = true;
+
+  ABORT = new AbortController();
+  renderLoading(images.length);
+
+  try {
+    const note = $('extraNote').value;
+    const messages = [
+      { role:'system', content: buildSystemPrompt() },
+      { role:'user', content: userContent(images, note) },
+    ];
+
+    const wantMulti = S.cfg.mode === 'multi' || S.cfg.mode === 'auto';
+    let result;
+
+    if(wantMulti){
+      try {
+        result = await runOnce(messages, true);
+      } catch(err){
+        // auto 模式下，多图失败则降级为分次
+        if(S.cfg.mode === 'auto' && images.length > 1 && isMultiImageError(err)){
+          setStreamText('多图请求不被该模型支持，正在改用逐张识别…');
+          result = await runSequential(images, note);
+        } else throw err;
+      }
+    } else {
+      result = images.length > 1 ? await runSequential(images, note) : await runOnce(messages, true);
+    }
+
+    S.lastResult = result;
+    renderResult(result);
+    setStatus('imgStatus', '', null);
+
+  } catch(err){
+    if(err.name === 'AbortError'){
+      renderError('已取消本次请求。');
+    } else {
+      renderError(friendlyError(err));
+    }
+  } finally {
+    S.busy = false;
+    $('btnGo').disabled = false;
+    $('btnGo').textContent = '开始精讲';
+    $('askInput').disabled = false;
+    $('btnAsk').disabled = false;
+    updateCount();
+    ABORT = null;
+  }
+}
+
+function isMultiImageError(err){
+  const m = String(err && err.message || '');
+  return /image|图片|vision|multimodal|content|400|422/i.test(m);
+}
+
+async function runOnce(messages, stream){
+  const signal = ABORT ? ABORT.signal : null;
+  const useStream = stream && S.cfg.stream;
+  if(useStream){
+    const r = await callAPIStream(messages, (_, full)=>{
+      setStreamText(full);
+    }, signal);
+    return finalize(r.content, r.finishReason);
+  } else {
+    const r = await callAPI(messages, signal);
+    return finalize(r.content, r.finishReason);
+  }
+}
+
+/* 逐张请求：分别识别，再合并讲解 */
+async function runSequential(images, note){
+  const signal = ABORT ? ABORT.signal : null;
+  const parts = [];
+  for(let i=0;i<images.length;i++){
+    setStreamText(`正在识别第 ${i+1} / ${images.length} 张图片…`);
+    const msgs = [
+      { role:'system', content:'你是题目识别助手。请把图片里所有题目文字原样、完整地转写出来，保留题号、选项、公式。如果图中有几何图形或表格，用文字描述其内容和标注。只输出转写结果，不要解题。' },
+      { role:'user', content:[
+        { type:'text', text:`这是第 ${i+1} 张图，请完整转写其中的题目内容。` },
+        { type:'image_url', image_url:{ url: images[i].dataUrl } },
+      ]},
+    ];
+    const r = await callAPI(msgs, signal);
+    parts.push(`【第 ${i+1} 张图的识别结果】\n${r.content.trim()}`);
+  }
+
+  setStreamText('正在综合两张图片的内容并生成讲解…');
+  const merged = [
+    '我上传了同一道题的多张图片，下面是它们的识别结果（按页顺序）。',
+    '请把它们合并理解为一道完整题目（注意可能有跨页断题），然后按系统提示的结构讲解，并以 JSON 格式输出。',
+    '',
+    parts.join('\n\n'),
+    note && note.trim() ? `\n补充说明：${note.trim()}` : '',
+  ].join('\n');
+
+  const msgs = [
+    { role:'system', content: buildSystemPrompt() },
+    { role:'user', content: merged },
+  ];
+  const r = await runOnce(msgs, true);
+  return r;
+}
+
+function finalize(raw, finishReason){
+  const truncated = (finishReason === 'length');
+  const obj = extractJSON(raw);
+
+  if(obj && Array.isArray(obj.steps) && obj.steps.length){
+    // 截断但修好了：能用就先用，同时提示可能不完整
+    return { parsed: obj, raw, truncated };
+  }
+
+  // 解析出了对象，但没有可用的 steps
+  if(obj){
+    const hint = truncated
+      ? '模型输出被截断，没能生成完整的讲解结构。建议把「最大输出 tokens」调大（8192 以上）后重讲。'
+      : '模型返回的内容缺少 steps 字段，无法分步展示。可以点「重讲」再试一次。';
+    return {
+      parsed: {
+        title: obj.title || '讲解结果',
+        subject: obj.subject || '', grade: obj.grade || '',
+        recognized: obj.recognized || '',
+        steps: [{ key:'solve', title:'无法分步展示',
+                  body: hint + '\n\n---\n\n' + String(raw || '（无内容）') }],
+      },
+      raw, unparsed: true, truncated,
+    };
+  }
+
+  const looksLikeJSON = /^\s*[\[{]/.test(String(raw || '').trim());
+  const diagnosis = truncated
+    ? '模型输出被**截断**了，没能生成完整的讲解结构。\n\n' +
+      '解决办法：\n' +
+      '1. 点右上角 ⚙，把「最大输出 tokens」调大（建议 8192 或更高）\n' +
+      '2. 如果该模型本身输出上限较低，可换一个上下文更长的模型\n' +
+      '3. 也可以点下方「重讲」再试一次'
+    : (looksLikeJSON
+        ? '模型返回的内容不是完整的 JSON，无法分步展示。这通常是输出被截断或格式跑偏。可把「最大输出 tokens」调大，或点「重讲」重试。'
+        : '模型没有按要求的 JSON 格式返回，以下是它的原始输出。可以点「重讲」再试一次。');
+
+  // 把模型原始输出保留在正文里，别让它丢掉
+  const body = diagnosis + '\n\n---\n\n' + String(raw || '（无内容）');
+
+  return {
+    parsed: {
+      subject:'', grade:'',
+      title: truncated ? '输出被截断' : '讲解结果',
+      steps:[{ key:'solve', title: truncated ? '输出被截断' : '讲解内容', body }],
+    },
+    raw,
+    unparsed: true,
+    truncated,
+    looksLikeJSON,
+  };
+}
+
+function friendlyError(err){
+  const m = String(err && err.message || err);
+  if(/Failed to fetch|NetworkError|Load failed/i.test(m)){
+    return '网络请求失败。可能原因：\n1) 接口地址填错（检查末尾是否需要 /v1）\n2) 该接口不允许浏览器跨域直接调用（CORS）\n3) 本机网络无法访问该域名\n\n原始信息：' + m;
+  }
+  if(/401|403/.test(m)) return '鉴权失败（401/403）：请检查 API Key 是否正确、是否有该模型权限。\n\n' + m;
+  if(/404/.test(m)) return '接口路径不存在（404）：请检查 Base URL 是否填到 /v1 为止，以及模型名称是否拼写正确。\n\n' + m;
+  if(/429/.test(m)) return '请求过于频繁或超出配额（429），请稍后再试。\n\n' + m;
+  if(/model|模型/i.test(m) && /not|不存在|invalid|unknown/i.test(m)){
+    return '模型名称无效：请确认该模型存在且支持图片输入。\n\n' + m;
+  }
+  return '请求失败：\n' + m;
+}
+
+/* ---------------- 互动测验 ---------------- */
+const QZ_LABEL = { choice:'多选一', blank:'填空', ask:'说一说' };
+const VERDICT = {
+  correct: { cls:'ok',   label:'✅ 答对了' },
+  partial: { cls:'part', label:'⚠️ 答对了一部分' },
+  wrong:   { cls:'no',   label:'❌ 再想想' },
+};
+
+/* 归一化一道测验题，容错各种字段写法 */
+function normalizeQuiz(q){
+  if(!q || typeof q !== 'object') return null;
+  const type = ['choice','blank','ask'].includes(q.type) ? q.type : (q.options ? 'choice' : 'ask');
+  const out = {
+    type,
+    q: q.q || q.question || '',
+    why: q.why || q.explain || q.explanation || '',
+    answer: (q.answer !== undefined ? q.answer : q.a),
+    options: Array.isArray(q.options) ? q.options.slice(0, 6) : [],
+  };
+  if(!out.q) return null;
+
+  if(type === 'choice'){
+    // 选项少于 2 个 → 降级为提问，避免出现无法作答的题
+    if(out.options.length < 2){
+      out.type = 'ask';
+      return out;
+    }
+    // answer 可能是下标、字母或选项文本，统一成下标
+    let idx = -1;
+    const a = out.answer;
+    if(typeof a === 'number' && a >= 0 && a < out.options.length) idx = a;
+    else if(typeof a === 'string'){
+      const s = a.trim();
+      if(/^[A-Fa-f]$/.test(s)) idx = s.toUpperCase().charCodeAt(0) - 65;
+      else if(/^\d+$/.test(s)) idx = parseInt(s, 10);
+      else {
+        const k = out.options.findIndex(o => String(o).trim() === s);
+        if(k >= 0) idx = k;
+      }
+    }
+    if(idx < 0 || idx >= out.options.length) idx = 0;   // 兜底
+    out.answer = idx;
+  }
+  return out;
+}
+
+/* 渲染一道测验，返回 DOM 节点 */
+function renderQuiz(quiz, ctx){
+  const z = normalizeQuiz(quiz);
+  if(!z) return null;
+  ctx = ctx || {};
+
+  const box = document.createElement('div');
+  box.className = 'qz';
+
+  const head = document.createElement('div');
+  head.className = 'qzh';
+  head.textContent = '✎ ' + (QZ_LABEL[z.type] || '小测验');
+  box.appendChild(head);
+
+  const qEl = document.createElement('div');
+  qEl.className = 'qzq';
+  qEl.innerHTML = md(z.q);
+  box.appendChild(qEl);
+
+  const state = { quiz:z, done:false, picked:-1, text:'' };
+  box._state = state;
+
+  let inputEl = null;
+
+  if(z.type === 'choice'){
+    const opts = document.createElement('div');
+    opts.className = 'opts';
+    z.options.forEach((o, i)=>{
+      const b = document.createElement('button');
+      b.className = 'opt';
+      b.type = 'button';
+      b.innerHTML = `<span class="mk-letter">${String.fromCharCode(65+i)}</span>
+                     <span class="mk-txt">${md(String(o))}</span>`;
+      b.onclick = ()=>{
+        if(state.done) return;
+        state.picked = i;
+        opts.querySelectorAll('.opt').forEach((x,k)=>x.classList.toggle('sel', k === i));
+        act.querySelector('#qzSubmit').disabled = false;
+      };
+      opts.appendChild(b);
+    });
+    box.appendChild(opts);
+    inputEl = opts;
+  } else if(z.type === 'blank'){
+    const row = document.createElement('div');
+    row.className = 'blankrow';
+    const inp = document.createElement('input');
+    inp.className = 'blankin';
+    inp.type = 'text';
+    inp.placeholder = '在这里填写答案';
+    inp.autocomplete = 'off';
+    inp.oninput = ()=>{ state.text = inp.value; act.querySelector('#qzSubmit').disabled = !inp.value.trim(); };
+    inp.onkeydown = (e)=>{
+      if(e.key === 'Enter' && !e.isComposing && inp.value.trim() && !state.done){
+        e.preventDefault(); doSubmit();
+      }
+    };
+    row.appendChild(inp);
+    box.appendChild(row);
+    inputEl = inp;
+  } else {
+    const row = document.createElement('div');
+    row.className = 'askrow';
+    const ta = document.createElement('textarea');
+    ta.placeholder = '用自己的话写一写…';
+    ta.oninput = ()=>{ state.text = ta.value; act.querySelector('#qzSubmit').disabled = !ta.value.trim(); };
+    row.appendChild(ta);
+    box.appendChild(row);
+    inputEl = ta;
+  }
+
+  const act = document.createElement('div');
+  act.className = 'qzact';
+  act.innerHTML = `<button class="btn primary" id="qzSubmit" disabled>提交</button>
+                   <button class="btn ghost" id="qzSkip">先跳过</button>`;
+  box.appendChild(act);
+
+  const hint = document.createElement('div');
+  hint.className = 'qzhint';
+  hint.textContent = z.type === 'choice'
+    ? '选一个你认为正确的选项'
+    : (z.type === 'blank' ? '填好后按回车或点提交' : '写完后点提交，老师会点评');
+  box.appendChild(hint);
+
+  const fbHost = document.createElement('div');
+  box.appendChild(fbHost);
+
+  // ---- 提交 ----
+  async function doSubmit(){
+    if(state.done) return;
+
+    if(z.type === 'choice'){
+      const ok = state.picked === z.answer;
+      state.done = true;
+      finish(ok ? 'correct' : 'wrong', z.why, inputEl, true);
+      return;
+    }
+
+    const val = (state.text || '').trim();
+    if(!val) return;
+
+    state.done = true;
+    act.querySelector('#qzSubmit').disabled = true;
+    act.querySelector('#qzSkip').disabled = true;
+    if(inputEl) inputEl.disabled = true;
+
+    fbHost.innerHTML = '<div class="fb"><span class="grading"><span class="spin"></span>老师正在看你的回答…</span></div>';
+
+    try {
+      const r = await gradeAnswer(z, val, ctx);
+      finish(r.verdict, r.feedback || z.why, inputEl, false, val);
+    } catch(err){
+      // 判卷失败：退回本地简单比对，不打断学习
+      const fbEl = fbHost.querySelector('.fb');
+      const local = localCompare(val, z.answer);
+      finish(local, (z.why || '') + '\n\n（在线点评暂时不可用，以上为参考答案）',
+             inputEl, false, val);
+      if(fbEl) fbEl.classList.add('offline');
+    }
+    act.querySelector('#qzSubmit').style.display = 'none';
+    act.querySelector('#qzSkip').style.display = 'none';
+  }
+
+  function finish(verdict, feedback, inp, lockChoices, userText){
+    const v = VERDICT[verdict] || VERDICT.wrong;
+    box.classList.add('done-' + (verdict === 'correct' ? 'ok' : verdict === 'partial' ? 'part' : 'no'));
+
+    // 多选一：标出正确/错误选项
+    if(z.type === 'choice' && lockChoices){
+      const btns = box.querySelectorAll('.opt');
+      btns.forEach((b, i)=>{
+        b.disabled = true;
+        b.classList.remove('sel');
+        if(i === z.answer) b.classList.add('right');
+        else if(i === state.picked) b.classList.add('wrong');
+      });
+    }
+    // 其他类型：禁用输入
+    if(inp && z.type !== 'choice') inp.disabled = true;
+
+    let html = `<div class="fb ${v.cls}">
+      <div class="fbt">${v.label}</div>
+      <div class="fbb">${feedback ? md(feedback) : ''}</div>`;
+
+    // 展示参考答案
+    let ansTxt = '';
+    if(z.type === 'choice'){
+      ansTxt = `${String.fromCharCode(65 + z.answer)}. ${String(z.options[z.answer])}`;
+    } else if(z.answer !== undefined && z.answer !== null && String(z.answer).trim()){
+      ansTxt = String(z.answer);
+    }
+    if(ansTxt){
+      html += `<div class="ansline">参考答案：${md(ansTxt)}</div>`;
+    }
+    if(userText){
+      html += `<div class="ansline">你的回答：${esc(userText)}
+        <span class="sw" id="qzRedo" style="margin-left:8px;cursor:pointer;color:var(--acc)">重做</span></div>`;
+    }
+    html += '</div>';
+
+    fbHost.innerHTML = html;
+    hint.style.display = 'none';
+    act.style.display = 'none';
+
+    // 重做
+    const redo = fbHost.querySelector('#qzRedo');
+    if(redo){
+      redo.onclick = ()=>{
+        state.done = false; state.text = ''; state.picked = -1;
+        box.classList.remove('done-ok','done-part','done-no');
+        fbHost.innerHTML = '';
+        hint.style.display = '';
+        act.style.display = '';
+        const sb = act.querySelector('#qzSubmit');
+        const sk = act.querySelector('#qzSkip');
+        if(sb){ sb.style.display = ''; sb.disabled = true; }
+        if(sk) sk.style.display = '';
+        if(inp && z.type !== 'choice'){ inp.disabled = false; inp.value = ''; inp.focus(); }
+        if(z.type === 'choice'){
+          box.querySelectorAll('.opt').forEach(b=>{
+            b.disabled = false; b.classList.remove('sel','right','wrong');
+          });
+        }
+      };
+    }
+
+    typeset(fbHost);
+    if(ctx.save) ctx.save();
+  }
+
+  act.querySelector('#qzSubmit').onclick = doSubmit;
+  act.querySelector('#qzSkip').onclick = ()=>{
+    if(state.done) return;
+    state.done = true;
+    act.querySelectorAll('.btn').forEach(b=>b.disabled = true);
+    if(inputEl && z.type !== 'choice') inputEl.disabled = true;
+    finish('wrong', (z.why || '') + '\n\n（已跳过。不影响继续听课，想明白了可以点「重做」。）',
+           inputEl, false, '');
+    act.querySelector('#qzSubmit').style.display = 'none';
+    act.querySelector('#qzSkip').style.display = 'none';
+  };
+
+  return box;
+}
+
+/* 本地兜底比对：在线判卷不可用时用 */
+function localCompare(userText, refAnswer){
+  if(refAnswer === undefined || refAnswer === null) return 'partial';
+  const norm = s => String(s).toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/[，。、；：！？,.;:!?]/g, '');
+  const u = norm(userText), r = norm(refAnswer);
+  if(!u) return 'wrong';
+  if(u === r) return 'correct';
+  if(r && (u.includes(r) || r.includes(u))) return 'partial';
+  return 'partial';
+}
+
+/* 调模型判卷 */
+async function gradeAnswer(quiz, userAnswer, ctx){
+  ctx = ctx || {};
+  const opts = quiz.type === 'choice' && quiz.options.length
+    ? '选项：' + quiz.options.map((o,i)=>`${String.fromCharCode(65+i)}. ${o}`).join('  ')
+    : '';
+  const ref = quiz.answer !== undefined && quiz.answer !== null ? String(quiz.answer) : '（无）';
+
+  const user = [
+    ctx.recognized ? '【题目】\n' + ctx.recognized : '',
+    '【测验问题】\n' + quiz.q,
+    opts,
+    '【参考答案】\n' + ref,
+    '【学生的回答】\n' + userAnswer,
+    '',
+    '请判断学生的回答，并按指定 JSON 格式输出。',
+  ].filter(Boolean).join('\n');
+
+  const r = await callAPI([
+    { role:'system', content: buildGradePrompt() },
+    { role:'user', content: user },
+  ], null);
+
+  const obj = extractJSON(r.content) || {};
+  let verdict = String(obj.verdict || '').toLowerCase().trim();
+  if(!['correct','partial','wrong'].includes(verdict)){
+    // 模型没按格式回，用本地比对兜底
+    verdict = localCompare(userAnswer, quiz.answer);
+  }
+  return { verdict, feedback: obj.feedback || obj.comment || '' };
+}
+
+/* ---------------- 题目原文：格式化与 LaTeX 规范化 ---------------- */
+
+/* 把各种「没有正确加 $ 定界符」的数学写法找出来，补上 $...$，
+   这样 MathJax 才能渲染成真正的公式，而不是显示 x^2、1/2 这种原文。
+   仅用于「题目原文」这类确定是数学内容的文本。
+
+   策略：不做复杂的表达式识别，而是用「候选片段 + 打分」的方式，
+   找出连续的最大数学区间，整段包起来，避免把公式切碎。 */
+function normalizeMath(src){
+  if(!src) return '';
+  let t = String(src);
+
+  // 先保护已有的公式与代码
+  const kept = [];
+  const stash = (m) => { kept.push(m); return '\u0000M' + (kept.length - 1) + '\u0000'; };
+  t = t.replace(/\$\$[\s\S]+?\$\$/g, stash);
+  t = t.replace(/\\\[[\s\S]+?\\\]/g, stash);
+  t = t.replace(/\\\([\s\S]+?\\\)/g, stash);
+  t = t.replace(/\$[^$\n]+?\$/g, stash);
+  t = t.replace(/`[^`\n]+`/g, stash);
+  // 链接也先保护起来，避免 https://a.com/b 里的斜杠被当成数学
+  t = t.replace(/https?:\/\/[^\s\u4e00-\u9fff]+/g, stash);
+
+  // 逐行处理：数学通常不会跨行，按行切割更安全
+  t = t.split('\n').map(line => wrapMathInLine(line)).join('\n');
+
+  // 恢复
+  t = t.replace(/\u0000M(\d+)\u0000/g, (_, i) => kept[+i] || '');
+  return t;
+}
+
+/* 单行内的数学区间识别：
+   从左到右扫描，遇到「数学起始字符」就尝试向右扩展，
+   中文字符或句子标点即终止，扩展出的区间若通过校验就整体包裹。 */
+function wrapMathInLine(line){
+  if(!line) return line;
+  // 已有占位符（\$ 保护下来的公式）不能动 —— 用 \u0000M..\u0000 占位，天然不含中文
+  let out = '';
+  let i = 0;
+  const n = line.length;
+
+  // 判断某字符是否可能属于数学片段
+  const isMathChar = (ch) =>
+    /[A-Za-z0-9]/.test(ch) || '+-*/=<>^_{}()[].,\\\''.includes(ch);
+  const isCJK = (ch) => /[\u4e00-\u9fff\u3000-\u303f\uff00-\uffef]/.test(ch);
+
+  while(i < n){
+    const ch = line[i];
+
+    // 占位符整体跳过
+    if(ch === '\u0000'){
+      const end = line.indexOf('\u0000', i + 1);
+      if(end !== -1){ out += line.slice(i, end + 1); i = end + 1; continue; }
+    }
+
+    if(!isMathChar(ch)){ out += ch; i++; continue; }
+
+    // 尝试向右扩展
+    let j = i;
+    while(j < n){
+      const c = line[j];
+      if(c === '\u0000') break;                  // 碰到占位符就停
+      if(isCJK(c)) break;                        // 碰到中文就停
+      if(!isMathChar(c)){
+        // 允许单个空格，但不能连续两个（那是句子间隔）
+        if(c === ' ' && line[j+1] !== ' ' && isMathChar(line[j+1] || '')){ j++; continue; }
+        break;
+      }
+      j++;
+    }
+
+    const seg = line.slice(i, j);
+    // 去掉尾部不属于数学的标点
+    const trimmed = seg.replace(/[\s.,;:]+$/, '');
+    const trail = seg.slice(trimmed.length);
+
+    if(looksLikeMath(trimmed)){
+      out += '$' + trimmed + '$' + trail;
+    } else {
+      out += seg;
+    }
+    i = j;
+  }
+  return out;
+}
+
+/* 判断一个片段是否真的值得渲染为公式 */
+function looksLikeMath(s){
+  const x = String(s).trim();
+  if(!x) return false;
+  if(x.length > 200) return false;
+  if(x.includes('\u0000')) return false;                 // 含占位符，说明跨了已有公式
+  if(/^[\d\s.,;:]+$/.test(x)) return false;              // 纯数字/标点
+  if(/^[\d]+\s*[.)]\s*$/.test(x)) return false;          // 题号 "6."
+  if(/^\(\s*\d+\s*\)$/.test(x)) return false;            // "(1)"
+  if(!/[A-Za-z\\]/.test(x)) return false;                // 必须有字母或 LaTeX 命令
+
+  // 至少要有一个「明确是数学」的特征
+  return (
+    /\\[a-zA-Z]/.test(x) ||                    // LaTeX 命令
+    /[\^_]/.test(x) ||                         // 上下标
+    /\d\s*\/\s*\d/.test(x) ||                  // 分数 1/2
+    /[A-Za-z]\s*\(/.test(x) ||                 // f(x)
+    /[=<>]/.test(x) ||                         // 等号/不等号
+    /[A-Za-z]\s*[+\-*/]/.test(x) ||            // 变量参与运算
+    /[+\-*/]\s*[A-Za-z]/.test(x) ||
+    /\d\s*[+\-*/]\s*\d/.test(x)                // 数字运算
+  );
+}
+
+/* 包一层 $...$；若片段里已有未配对的 $ 则不动 */
+function wrapMath(s){
+  const x = String(s).trim();
+  if(!x) return s;
+  if(x.includes('$')) return s;
+  // 纯标点/空格不处理
+  if(!/[A-Za-z0-9\\]/.test(x)) return s;
+  return '$' + x + '$';
+}
+
+/* 整理题目原文的版式：题号单独成行、选项对齐、去多余空行 */
+function formatQuestion(src){
+  if(!src) return '';
+  let t = String(src).replace(/\r\n?/g, '\n');
+
+  // 去掉模型爱加的前后缀
+  t = t.replace(/^\s*题目内容如下[：:]\s*/, '');
+  t = t.replace(/^\s*题目[：:]\s*/, '');
+
+  // 题号前换行：1. / (1) / （1） / ① 等
+  t = t.replace(/([^\n])\s*(?=(?:^|\n)\s*\(\d+\)\s)/g, '$1\n');
+  t = t.replace(/\n{3,}/g, '\n\n');
+
+  // 行首行尾空白
+  t = t.split('\n').map(l => l.replace(/\s+$/, '')).join('\n');
+
+  return t.trim();
+}
+
+function pinQuestion(text, meta){
+  const box = $('pinnedQ');
+  if(!text){ box.classList.remove('show'); return; }
+  const formatted = formatQuestion(text);
+  const withMath = normalizeMath(formatted);
+  $('pqBody').innerHTML = md(withMath);
+  $('pqCnt').textContent = meta || '';
+  box.classList.add('show');
+  $('pqBox').classList.remove('collapsed');
+  // 显示后重新测量，确保 sticky 的 top 偏移正确
+  requestAnimationFrame(()=>{ syncTopOffset(); fixSticky(); });
+  typeset($('pqBody'));
+  // 公式渲染完成后高度可能变化，再校一次
+  setTimeout(()=>{ syncTopOffset(); fixSticky(); }, 400);
+  setTimeout(()=>{ syncTopOffset(); fixSticky(); }, 1200);
+}
+function unpinQuestion(){
+  $('pinnedQ').classList.remove('show');
+  document.body.classList.remove('hdr-hidden');
+}
+
+/* 头部高度写入 CSS 变量，供钉顶栏 sticky 定位使用 */
+function syncTopOffset(){
+  const head = document.querySelector('header');
+  const h = head ? head.offsetHeight : 0;
+  document.documentElement.style.setProperty('--headH', h + 'px');
+}
+
+/* 若顶栏处于隐藏态，钉顶栏应贴到视口顶部（CSS 里靠 body.hdr-hidden 控制，
+   这里再兜一层，防止 class 未及时同步导致钉顶栏被顶出视口） */
+function fixSticky(){
+  const box = $('pinnedQ');
+  if(!box || !box.classList.contains('show')) return;
+  const head = document.querySelector('header');
+  const hidden = head && head.classList.contains('hidden');
+  box.style.top = hidden ? '0px' : 'var(--headH, 56px)';
+}
+
+/* ---------------- 滚动时自动隐藏顶栏 ---------------- */
+let scrollState = { last: 0, ticking: false, acc: 0 };
+
+function onScroll(){
+  if(scrollState.ticking) return;
+  scrollState.ticking = true;
+  requestAnimationFrame(()=>{
+    scrollState.ticking = false;
+    const y = window.pageYOffset || document.documentElement.scrollTop || 0;
+    const head = document.querySelector('header');
+    if(!head) return;
+
+    const dy = y - scrollState.last;
+
+    // 顶部附近始终显示
+    if(y <= 8){
+      head.classList.remove('hidden');
+      document.body.classList.remove('hdr-hidden');
+      scrollState.acc = 0;
+    } else if(dy > 0){
+      // 向下滚 —— 累计一点再隐藏，避免抖动
+      scrollState.acc += dy;
+      if(scrollState.acc > 26){
+        head.classList.add('hidden');
+        document.body.classList.add('hdr-hidden');
+      }
+    } else if(dy < 0){
+      // 向上滚 —— 立刻显示
+      scrollState.acc = 0;
+      head.classList.remove('hidden');
+      document.body.classList.remove('hdr-hidden');
+    }
+
+    scrollState.last = y;
+    fixSticky();          // 顶栏显隐变化后，同步钉顶栏位置
+  });
+}
+
+/* 焦点在输入框时不隐藏顶栏（避免误触收起） */
+function resetHeader(){
+  const head = document.querySelector('header');
+  if(head) head.classList.remove('hidden');
+  document.body.classList.remove('hdr-hidden');
+  scrollState.acc = 0;
+  fixSticky();
+}
+
+/* ---------------- 进入 / 退出讲解态 ---------------- */
+function enterExplainMode(){
+  S.started = true;
+  $('uploadCard').style.display = 'none';
+  document.querySelectorAll('#cfgPanel,#helpPanel').forEach(e=>e.style.display='none');
+  document.body.classList.add('explaining');
+  $('compTip').innerHTML = '<span class="k">Enter</span> 发送 · <span class="k">Esc</span> 返回上传';
+}
+function exitExplainMode(){
+  S.started = false;
+  S.queue = []; S.shown = 0; S.boardEl = null; S.extendItem = null;
+  $('uploadCard').style.display = '';
+  document.body.classList.remove('explaining');
+  unpinQuestion();
+  $('result').innerHTML = '';
+  $('askInput').placeholder = '随时可以在这里提问…';
+  $('compTip').innerHTML = '';
+  document.documentElement.style.setProperty('--topH','0px');
+  $('pinnedQ').style.cssText = '';
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+/* 重拍：中止进行中的请求 + 清空讲解与图片，回到上传界面 */
+function retake(){
+  // 1) 中止正在进行的请求
+  try { if(ABORT) ABORT.abort(); } catch(_){}
+
+  // 2) 重置讲解相关状态
+  S.busy = false;
+  S.queue = [];
+  S.shown = 0;
+  S.boardEl = null;
+  S.extendItem = null;
+  S.finalQuiz = null;
+  S.qCtx = null;
+  S.lastResult = null;
+  S.allModels = S.allModels;   // 模型列表保留（与题目无关）
+
+  // 3) 清空图片
+  S.images = [null, null];
+  renderSlot(0);
+  renderSlot(1);
+  updateCount();
+
+  // 4) 清空输入与结果，回到上传态
+  $('extraNote').value = '';
+  $('askInput').value = '';
+  autoGrow($('askInput'));
+  setStatus('imgStatus', '', null);
+
+  if(S.started) exitExplainMode(); else {
+    $('result').innerHTML = '';
+    unpinQuestion();
+    document.body.classList.remove('explaining');
+  }
+
+  // 5) 恢复按钮可用状态
+  $('btnGo').disabled = false;
+  $('btnGo').textContent = '开始精讲';
+  $('btnRetry').disabled = true;
+  $('askInput').disabled = false;
+  $('btnAsk').disabled = false;
+
+  // 6) 顶栏恢复显示，滚回顶部
+  resetHeader();
+  window.scrollTo({ top:0, behavior:'smooth' });
+  toast('已清空，请重新拍题');
+}
+
+/* ---------------- 对话气泡 ---------------- */
+let msgSeq = 0;
+function addBubble(role, html, opts){
+  opts = opts || {};
+  // 始终把对话流放进 .board（S.boardEl 或 #board），避免出现空板子
+  const board = opts.board || S.boardEl || $('board') || $('result');
+  let chat = board.querySelector('.chat');
+  if(!chat){
+    chat = document.createElement('div');
+    chat.className = 'chat';
+    board.appendChild(chat);
+  }
+
+  const wrap = document.createElement('div');
+  wrap.className = 'msg ' + (role === 'me' ? 'me' : 'ai') + (opts.cls ? ' ' + opts.cls : '');
+  wrap.id = 'msg' + (++msgSeq);
+
+  const av = document.createElement('div');
+  av.className = 'av';
+  av.textContent = role === 'me' ? '我' : (opts.icon || '✦');
+
+  const bub = document.createElement('div');
+  bub.className = 'bub';
+  if(opts.title){
+    const t = document.createElement('div');
+    t.className = 'stt';
+    t.textContent = opts.title;
+    bub.appendChild(t);
+  }
+  const body = document.createElement('div');
+  body.innerHTML = html;
+  bub.appendChild(body);
+
+  wrap.append(av, bub);
+  chat.appendChild(wrap);
+
+  // 保证「下一步」按钮始终唯一、且排在所有气泡之后
+  ensureNextLast(chat);
+
+  bub._body = body;
+  return wrap;
+}
+
+/* 去重并把 .nextwrap 移到对话流末尾 */
+function ensureNextLast(chat){
+  if(!chat) return null;
+  const all = chat.querySelectorAll('.nextwrap');
+  // 只保留第一个，其余删除
+  for(let i = 1; i < all.length; i++){
+    if(all[i].parentNode) all[i].parentNode.removeChild(all[i]);
+  }
+  const nw = all[0] ||
+    (S.boardEl ? S.boardEl.querySelector('.nextwrap') : null);
+  if(!nw) return null;
+  // 已在末尾则不动
+  if(nw.parentNode === chat && chat.children[chat.children.length - 1] === nw) return nw;
+  chat.appendChild(nw);   // appendChild 会自动从原位置移到末尾
+  return nw;
+}
+
+function scrollToMsg(el){
+  if(!el) return;
+  const y = el.getBoundingClientRect().top + window.pageYOffset - 130;
+  window.scrollTo({ top: Math.max(0, y), behavior:'smooth' });
+}
+
+/* ---------------- 分步呈现 ---------------- */
+function renderExplain(res){
+  const p = res.parsed || {};
+  const steps = Array.isArray(p.steps) ? p.steps : [];
+
+  S.queue = steps.slice();
+  S.shown = 0;
+  S.extendItem = (p.extend && (p.extend.body || p.extend.title)) ? p.extend : null;
+  S.finalQuiz = p.finalQuiz || p.final_quiz || p.quiz || null;
+  S.qCtx = { recognized: p.recognized || '' };
+
+  // 统计测验数量，用于标题提示
+  const quizCount = steps.filter(s => normalizeQuiz(s.quiz)).length + (S.finalQuiz ? 1 : 0);
+  const subCount = steps.filter(s => /^solve\d+$/i.test(String(s.key||''))).length;
+
+  // 钉顶题目原文
+  const meta = [p.subject, p.grade].filter(Boolean).join(' · ');
+  pinQuestion(p.recognized || '', meta);
+  requestAnimationFrame(syncTopOffset);
+
+  // 标题气泡
+  const head = [];
+  if(p.title) head.push(`<div class="ttl">${esc(p.title)}</div>`);
+  const bits = [`共 ${steps.length} 步`];
+  if(subCount) bits.push(`其中解答拆成 ${subCount} 小步`);
+  if(quizCount) bits.push(`${quizCount} 个小测验`);
+  head.push(`<div class="sub">${bits.join(' · ')}，点「下一步」逐步展开</div>`);
+  if(quizCount){
+    head.push(`<div class="sub" style="margin-top:6px;color:#7fa8e8">遇到测验就动手选一选、填一填，答错也没关系</div>`);
+  }
+
+  $('result').innerHTML = '<div class="board" id="board"></div>';
+  S.boardEl = $('board');
+
+  addBubble('ai', head.join(''), { cls:'head', icon:'✦' });
+
+  // 下一步按钮：放进对话流末尾（addBubble 会自动保持它在最后且唯一）
+  const nw = document.createElement('div');
+  nw.className = 'nextwrap';
+  nw.innerHTML = `<button class="btn next" id="btnNext">下一步 →</button>`;
+  const chat = S.boardEl.querySelector('.chat');
+  (chat || S.boardEl).appendChild(nw);
+  ensureNextLast(chat || S.boardEl);
+
+  $('btnNext').onclick = showNext;
+  $('askInput').placeholder = '随时提问，比如「第 2 步没听懂」…';
+
+  showNext();
+}
+
+function showNext(){
+  if(S.shown >= S.queue.length){
+    // 队列走完 → 小课堂 → 综合测验 → 收尾
+    if(S.extendItem){
+      const ex = S.extendItem;
+      const host = addBubble('ai', md(ex.body || ''), {
+        cls:'ext',
+        icon:'📚',
+        title:'📚 ' + (ex.title || '知识点增强小课堂'),
+      });
+      S.extendItem = null;
+      typeset(host);
+      requestAnimationFrame(()=>{ syncTopOffset(); scrollToMsg(host); });
+
+      const btn = $('btnNext');
+      if(btn){
+        const left = (S.finalQuiz ? 1 : 0);
+        if(left > 0){
+          btn.textContent = '综合检验 →';
+          return;                     // 等用户点，再进综合测验
+        }
+      }
+    }
+    finishExplain();
+    return;
+  }
+
+  const st = S.queue[S.shown];
+  const key = String(st.key || '');
+  const isSub = /^solve\d+$/i.test(key);      // solve1 / solve2 … 视为小步骤
+  const cls = isSub ? 'sub' : (STEP_CLASS[key] || '');
+  const icon = isSub ? (key.match(/\d+/) || ['1'])[0] : (STEP_ICON[key] || String(S.shown + 1));
+
+  const el = addBubble('ai', md(st.body || ''), {
+    cls: cls,
+    icon: icon,
+    title: st.title || ('第 ' + (S.shown+1) + ' 步'),
+  });
+
+  // 步骤自带的测验：附在气泡里，可交互
+  const quizNode = renderQuiz(st.quiz, S.qCtx);
+  if(quizNode){
+    const bub = el.querySelector('.bub');
+    if(bub) bub.appendChild(quizNode);
+    typeset(quizNode);
+  }
+
+  S.shown++;
+  const btn = $('btnNext');
+  if(btn){
+    const left = S.queue.length - S.shown + (S.finalQuiz ? 1 : 0) + (S.extendItem ? 1 : 0);
+    btn.textContent = left > 0 ? `下一步 →  （还有 ${left} 步）` : '结束讲解 →';
+  }
+  typeset(el);
+  requestAnimationFrame(()=>{ syncTopOffset(); scrollToMsg(el); });
+
+  // 全部展示完自动收掉按钮
+  if(S.shown >= S.queue.length && !S.extendItem && !S.finalQuiz) finishExplain();
+}
+
+function finishExplain(){
+  // 综合测验（finalQuiz）放在最后
+  if(S.finalQuiz){
+    const fq = S.finalQuiz;
+    S.finalQuiz = null;
+    const host = addBubble('ai', '', { icon:'🎯', title:'🎯 综合检验' });
+    const bub = host.querySelector('.bub');
+    if(bub){
+      const node = renderQuiz(fq, S.qCtx);
+      if(node) bub.appendChild(node);
+      typeset(node);
+    }
+    requestAnimationFrame(()=>{ syncTopOffset(); scrollToMsg(host); });
+    return;
+  }
+
+  const nw = S.boardEl && S.boardEl.querySelector('.nextwrap');
+  if(nw) nw.remove();
+  if(!S.boardEl) return;
+  if(!S.boardEl.querySelector('.ending')){
+    const e = document.createElement('div');
+    e.className = 'ending';
+    e.innerHTML = '<div class="line">讲解结束，还有疑问可以直接在下面提问</div>';
+    S.boardEl.appendChild(e);
+  }
+  requestAnimationFrame(syncTopOffset);
+  scrollToMsg(S.boardEl.querySelector('.ending'));
+}
+
+/* ---------------- 渲染：加载中 ---------------- */
+function renderLoading(n){
+  $('result').innerHTML = `
+    <div class="board">
+      <div class="loading">
+        <div class="spin"></div>
+        <div class="lt">正在${n>1?'综合分析 '+n+' 张图片':'分析题目'}…</div>
+        <div class="ls">大模型正在识别题目并组织讲解</div>
+      </div>
+      <div class="stream-out" id="streamOut" style="display:none"></div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn" id="btnCancel">取消</button>
+      </div>
+    </div>`;
+  $('btnCancel').onclick = ()=>{ if(ABORT) ABORT.abort(); };
+}
+
+function setStreamText(txt){
+  const el = $('streamOut');
+  if(!el) return;
+  el.style.display = 'block';
+  el.textContent = txt.length > 4000 ? '…' + txt.slice(-4000) : txt;
+  el.scrollTop = el.scrollHeight;
+}
+
+/* ---------------- 渲染：错误 ---------------- */
+function renderError(msg){
+  $('result').innerHTML = `
+    <div class="board">
+      <div class="step" style="animation-delay:0s">
+        <div class="no" style="background:rgba(255,92,92,.13);border-color:rgba(255,92,92,.4);color:#ff9b9b">!</div>
+        <h4 style="color:#ffb0b0">出错了</h4>
+        <div class="body"><p>${esc(msg).replace(/\n/g,'<br>')}</p></div>
+      </div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn" id="btnBack2">返回上传</button>
+      </div>
+    </div>`;
+  const b = $('btnBack2');
+  if(b) b.onclick = exitExplainMode;
+  // 出错时退回上传态，方便用户改配置或换图
+  if(!S.started) return;
+}
+
+/* ---------------- 渲染：结果 ---------------- */
+const STEP_ICON = {
+  understand:'题', points:'点', think:'思', quiz:'测',
+  solve:'解', trap:'坑', method:'法', review:'结'
+};
+const STEP_CLASS = { quiz:'pass', trap:'warn' };
+
+/* 结果入口：走分步对话流 */
+function renderResult(res){
+  const steps = res && res.parsed && Array.isArray(res.parsed.steps) ? res.parsed.steps : [];
+
+  // 截断提示条：放在最前面，用户一眼就能看到
+  const warn = res && res.truncated
+    ? `<div class="truncwarn">
+         <div class="tw-t">⚠️ 输出被截断</div>
+         <div class="tw-b">模型达到最大输出长度，讲解可能不完整。点右上角 ⚙ 把「最大输出 tokens」调大（建议 8192 以上）后重讲。</div>
+       </div>`
+    : '';
+
+  if(res && res.parsed && steps.length && !(steps.length === 1 && steps[0].key === 'solve' && res.unparsed)){
+    renderExplain(res);
+    if(warn) injectWarn(warn);
+  } else {
+    // 模型没给可用结构：展示诊断信息 + 原始输出
+    const p = (res && res.parsed) || {};
+    $('result').innerHTML = '<div class="board" id="board"></div>';
+    S.boardEl = $('board');
+    if(p.recognized) pinQuestion(p.recognized, '');
+    addBubble('ai', md((p.steps && p.steps[0] && p.steps[0].body) || '模型未返回可展示的内容。'), { icon: res && res.truncated ? '⚠️' : '✦' });
+    if(res && res.raw){
+      const rawHost = document.createElement('details');
+      rawHost.className = 'raw';
+      rawHost.innerHTML = `<summary>查看模型原始输出</summary><pre>${esc(res.raw)}</pre>`;
+      S.boardEl.appendChild(rawHost);
+    }
+    finishExplain();
+  }
+  requestAnimationFrame(syncTopOffset);
+}
+
+/* 把警告条插到对话流最前 */
+function injectWarn(html){
+  if(!S.boardEl) return;
+  const d = document.createElement('div');
+  d.innerHTML = html;
+  const node = d.firstChild;
+  if(!node) return;
+  const chat = S.boardEl.querySelector('.chat');
+  const host = chat || S.boardEl;
+  if(host.children.length) host.insertBefore(node, host.children[0]);
+  else host.appendChild(node);
+}
+
+async function copyResult(res){
+  const p = res.parsed || {};
+  let txt = (p.title ? p.title + '\n' : '') + '\n';
+  if(p.recognized) txt += '【题目】\n' + p.recognized + '\n\n';
+  (p.steps || []).forEach((s,i)=>{
+    txt += `${i+1}. ${s.title}\n${s.body}\n`;
+    if(s.quiz && s.quiz.q) txt += `   测验：${s.quiz.q}\n   参考：${s.quiz.a || ''}\n`;
+    txt += '\n';
+  });
+  if(p.extend && p.extend.body){
+    txt += `【${p.extend.title || '知识点增强小课堂'}】\n${p.extend.body}\n`;
+  }
+  try {
+    await navigator.clipboard.writeText(txt);
+    toast('已复制到剪贴板');
+  } catch(_){
+    toast('复制失败，请手动选择文本');
+  }
+}
+
+/* ---------------- 追问 ---------------- */
+async function askFollowup(){
+  if(S.busy) return;
+  if(!S.lastResult){ toast('先点「开始精讲」讲完题，再提问哦'); return; }
+
+  const input = $('askInput');
+  const q = input.value.trim();
+  if(!q){ toast('请输入问题'); return; }
+
+  S.busy = true;
+  $('btnAsk').disabled = true;
+
+  input.value = '';
+  autoGrow(input);
+
+  // 我的气泡
+  const myEl = addBubble('me', esc(q).replace(/\n/g,'<br>'), { icon:'我' });
+  scrollToMsg(myEl);
+
+  // AI 气泡（先显示打字指示）
+  const aiEl = addBubble('ai', '<span class="dots"><i></i><i></i><i></i></span>', { icon:'✦' });
+  const body = aiEl.querySelector('.bub > div:last-child');
+  scrollToMsg(aiEl);
+
+  try {
+    const images = collectImages();
+    const p = (S.lastResult && S.lastResult.parsed) || {};
+    const ctx = [
+      '这是我之前上传的题目，以及你给出的讲解：',
+      p.recognized ? '【题目】\n' + p.recognized : '',
+      '【你的讲解】',
+      (p.steps || []).map((s,i)=>`${i+1}. ${s.title}：${s.body}`).join('\n\n'),
+    ].filter(Boolean).join('\n');
+
+    const messages = [
+      { role:'system', content:'你是耐心的一对一辅导老师。学生会针对你之前的讲解追问，请结合题目和你的讲解，用简洁清晰的中文回答，直接解释困惑点，必要时补充例子或换一种说法。可以用 LaTeX 公式（行内 $...$）。不要重复整段讲解。' },
+      { role:'user', content: userContent(images, '', '') },
+      { role:'assistant', content: ctx },
+      { role:'user', content: q },
+    ];
+
+    if(S.cfg.stream){
+      const r = await callAPIStream(messages, (_, full)=>{ body.innerHTML = md(full); }, null);
+      body.innerHTML = md(r.content);
+    } else {
+      const r = await callAPI(messages, null);
+      body.innerHTML = md(r.content);
+    }
+    typeset(aiEl);
+
+  } catch(err){
+    body.innerHTML = `<span style="color:#ffb0b0">${esc(friendlyError(err)).replace(/\n/g,'<br>')}</span>`;
+  } finally {
+    S.busy = false;
+    $('btnAsk').disabled = false;
+    scrollToMsg(aiEl);
+  }
+}
+
+/* textarea 自适应高度 */
+function autoGrow(el){
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+/* ---------------- 测试连接 ---------------- */
+async function testConn(){
+  await saveCfg();
+  refreshStoreState();
+  if(!cfgReady()){ setStatus('cfgStatus','请先填写 Base URL、API Key 和模型名称','err'); return; }
+
+  setStatus('cfgStatus','正在测试…','info');
+  try {
+    const r = await callAPI([
+      { role:'user', content:'回复两个字：正常' },
+    ], null);
+    setStatus('cfgStatus', '连接成功 ✓　模型回复：' + r.content.trim().slice(0,80), 'ok');
+  } catch(err){
+    setStatus('cfgStatus', friendlyError(err), 'err');
+  }
+}
+
+/* ---------------- 事件绑定 ---------------- */
+function bind(){
+  // 预设
+  const pw = $('presets');
+  PRESETS.forEach(p=>{
+    const b = document.createElement('button');
+    b.className = 'preset';
+    b.textContent = p.name;
+    b.onclick = ()=>{
+      $('cfgBase').value = p.base;
+      $('cfgModel').value = p.model;
+      toast('已填入 ' + p.name + '，请补充 API Key');
+    };
+    pw.appendChild(b);
+  });
+
+  $('btnCfg').onclick = ()=>{
+    const el = $('cfgPanel');
+    const show = el.style.display === 'none';
+    el.style.display = show ? 'block' : 'none';
+    $('helpPanel').style.display = 'none';
+    if(show) el.scrollIntoView({ behavior:'smooth', block:'start' });
+  };
+
+  $('btnHelp').onclick = ()=>{
+    const el = $('helpPanel');
+    const show = el.style.display === 'none';
+    el.style.display = show ? 'block' : 'none';
+    $('cfgPanel').style.display = 'none';
+    if(show) el.scrollIntoView({ behavior:'smooth', block:'start' });
+  };
+
+  $('btnCloseHelp').onclick = ()=>{ $('helpPanel').style.display = 'none'; };
+
+  // 重拍：仅在讲解态显示（CSS 控制），点击后清空回到拍照界面
+  $('btnRetake').onclick = ()=>{
+    const hasWork = S.images.some(Boolean) || S.started || $('result').innerHTML.trim();
+    if(hasWork && !confirm('清空当前讲解和已拍的题目，重新拍题？')) return;
+    retake();
+  };
+
+  $('btnSaveCfg').onclick = async ()=>{
+    const hits = await saveCfg();
+    refreshStoreState();
+    toast(hits.length ? ('已保存（' + hits.join(' + ') + '）') : '保存失败：当前环境不允许存储，请用「生成配置链接」');
+  };
+
+  $('btnTest').onclick = testConn;
+  $('btnDetect').onclick = detectModels;
+
+  $('btnClearCfg').onclick = async ()=>{
+    if(!confirm('确定清除已保存的 API 设置吗？')) return;
+    Store.lsDel();
+    Store.ckDel();
+    await Store.idbDel();
+    S.cfg = { base:'', key:'', model:'', mode:'auto', maxTok:8192, imgW:1280, stream:true };
+    S.allModels = [];
+    $('modelList').style.display = 'none';
+    fillCfgForm();
+    refreshStoreState();
+    setStatus('cfgStatus','已清除','ok');
+  };
+
+  // ---- 配置备份 ----
+  $('btnMakeURL').onclick = ()=>{
+    const withKey = $('urlWithKey').checked;
+    const u = cfgToURL(withKey);
+    $('urlOut').style.display = 'block';
+    $('urlText').value = u;
+    toast(withKey ? '已生成（含 Key，注意保管）' : '已生成（不含 Key）');
+  };
+  $('urlWithKey').onchange = ()=>{ if($('urlOut').style.display === 'block') $('btnMakeURL').onclick(); };
+
+  $('btnCopyURL').onclick = async ()=>{
+    const t = $('urlText');
+    t.select();
+    try {
+      await navigator.clipboard.writeText(t.value);
+      toast('链接已复制');
+    } catch(_){
+      try { document.execCommand('copy'); toast('链接已复制'); }
+      catch(__){ toast('复制失败，请手动长按选择'); }
+    }
+  };
+
+  $('btnApplyURL').onclick = ()=>{
+    const u = $('urlText').value;
+    if(!u) return;
+    try {
+      const h = u.split('#')[1] || '';
+      if(h) location.hash = h;
+      // 顺带存一次，双保险
+      saveCfg().then(refreshStoreState);
+      toast('已写入地址栏，今后用这个网址打开即可');
+    } catch(_){ toast('无法写入地址栏，请手动复制链接收藏'); }
+  };
+
+  $('btnExport').onclick = ()=>{
+    if(exportCfg()) toast('已导出配置文件');
+    else {
+      // 退路：把 JSON 放进文本框供复制
+      $('urlOut').style.display = 'block';
+      $('urlText').value = JSON.stringify({ _app:'AI精讲', config: S.cfg }, null, 2);
+      toast('导出受限，已显示配置文本，可手动复制保存');
+    }
+  };
+
+  $('btnImport').onclick = ()=> $('fileCfg').click();
+
+  $('fileCfg').onchange = async (e)=>{
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if(!f) return;
+    try {
+      await importCfg(f);
+      fillCfgForm();
+      const hits = await persistCfg();
+      refreshStoreState();
+      setStatus('cfgStatus', '导入成功，已保存到 ' + (hits.join(' + ') || '当前会话'), 'ok');
+      toast('配置已导入');
+    } catch(err){
+      setStatus('cfgStatus', '导入失败：' + err.message, 'err');
+    }
+  };
+
+  // 拍照 / 相册
+  $('btnCam').onclick = ()=>{
+    S.slotTarget = detectSlot();
+    $('fileCam').click();
+  };
+  $('btnAlbum').onclick = ()=>{
+    S.slotTarget = detectSlot();
+    $('fileAlbum').click();
+  };
+
+  $('fileCam').onchange = async (e)=>{
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if(f) await addImage(f, S.slotTarget);
+  };
+
+  $('fileAlbum').onchange = async (e)=>{
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if(!files.length) return;
+    let slot = S.slotTarget;
+    for(const f of files){
+      if(slot >= MAX_IMAGES) break;
+      await addImage(f, slot);
+      slot++;
+    }
+    if(files.length > MAX_IMAGES) toast(`最多 ${MAX_IMAGES} 张，多余的已忽略`);
+  };
+
+  // 槽位点击
+  [0,1].forEach(i=>{
+    const el = $('slot' + i);
+    el.addEventListener('click', ()=>{
+      if(S.images[i]) return;
+      openPicker(i);
+    });
+  });
+
+  $('btnClearImg').onclick = ()=>{
+    S.images = [null, null];
+    renderSlot(0); renderSlot(1); updateCount();
+    setStatus('imgStatus','',null);
+    toast('已清空图片');
+  };
+
+  $('btnGo').onclick = startExplain;
+  $('btnRetry').onclick = ()=>{ if(S.started) exitExplainMode(); else startExplain(); };
+
+  // 钉顶栏折叠
+  $('pqHead').onclick = ()=>{
+    $('pqBox').classList.toggle('collapsed');
+    requestAnimationFrame(syncTopOffset);
+  };
+
+  // 底部输入
+  const ask = $('askInput');
+  $('btnAsk').onclick = askFollowup;
+
+  ask.addEventListener('input', ()=>autoGrow(ask));
+  ask.addEventListener('keydown', (e)=>{
+    // Enter 发送，Shift+Enter 换行
+    if(e.key === 'Enter' && !e.shiftKey && !e.isComposing){
+      e.preventDefault();
+      askFollowup();
+    }
+    if(e.key === 'Escape' && S.started && !S.busy){
+      exitExplainMode();
+    }
+  });
+
+  // 键盘快捷键
+  document.addEventListener('keydown', (e)=>{
+    // Ctrl/Cmd + Enter：未讲解时开始精讲；讲解中则发送
+    if((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !S.busy){
+      e.preventDefault();
+      if(S.started) askFollowup(); else startExplain();
+    }
+    // Esc：讲解态下返回上传
+    if(e.key === 'Escape' && S.started && !S.busy && document.activeElement !== ask){
+      exitExplainMode();
+    }
+  });
+
+  // 窗口尺寸变化时重算头部高度
+  window.addEventListener('resize', syncTopOffset);
+  // 钉顶栏展开/折叠动画后重算
+  window.addEventListener('load', syncTopOffset);
+
+  // 滚动自动隐藏顶栏
+  window.addEventListener('scroll', onScroll, { passive:true });
+
+  // 配置面板/说明打开时，顶栏与钉顶栏始终保持可见（避免遮住内容）
+  ['cfgBase','cfgKey','cfgModel','askInput','extraNote'].forEach(id=>{
+    const el = $(id);
+    if(el) el.addEventListener('focus', resetHeader);
+  });
+}
+
+/* ---------------- 初始化 ---------------- */
+(async function init(){
+  // MathJax 配置要在其脚本加载前就位
+  window.MathJax = window.MathJax || {
+    tex:{ inlineMath:[['$','$'],['\\(','\\)']], displayMath:[['$$','$$'],['\\[','\\]']] },
+    options:{ skipHtmlTags:['script','noscript','style','textarea','pre','code'] },
+    svg:{ fontCache:'global' },
+  };
+
+  bind();
+  renderSlot(0);
+  renderSlot(1);
+  updateCount();
+  syncTopOffset();
+  autoGrow($('askInput'));
+
+  // 异步加载配置（可能来自 URL / localStorage / IndexedDB / cookie）
+  try { await loadCfg(); } catch(_){}
+  refreshStoreState();
+
+  // 从 URL 参数加载过配置时给个提示
+  if(S.loadedFrom === 'URL 参数'){
+    toast('已从网址中载入设置', 2600);
+  }
+  // 若本地存储不可用，主动提醒一次
+  if(!Store.testLS() && !S.loadedFrom){
+    setTimeout(()=>{
+      setStatus('cfgStatus',
+        '⚠️ 当前环境不支持 localStorage，刷新页面会丢失设置。' +
+        '请填好设置后点「生成配置链接」，收藏该链接即可长期保留。', 'err');
+    }, 600);
+  }
+})();
+</script>
+
+<!-- MathJax：公式渲染，加载失败不影响主流程 -->
+<script>
+(function(){
+  var s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js';
+  s.async = true;
+  s.onerror = function(){
+    // 尝试备用 CDN
+    var s2 = document.createElement('script');
+    s2.src = 'https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js';
+    s2.async = true;
+    document.head.appendChild(s2);
+  };
+  document.head.appendChild(s);
+})();
+</script>
+
+</body>
+</html>
